@@ -88,11 +88,12 @@ export function ChatRoom({
         onListenProgress={reportListenProgress}
         onListened={markListened}
       >
-        {/* Calé sur la zone visible : en-tête et saisie restent à l'écran, même clavier ouvert.
+        {/* Mobile : calé sur la zone visible, en-tête et saisie restent à l'écran même clavier ouvert.
+            Grand écran : remplit le panneau à côté de la barre latérale.
             Les fichiers peuvent être déposés n'importe où dans la conversation. */}
         <FileDropZone
           onDropFiles={attachments.addFiles}
-          className="fixed inset-x-0 top-(--viewport-offset-top) mx-auto flex h-(--viewport-height) w-full max-w-3xl flex-col overflow-hidden bg-background md:border-x"
+          className="fixed inset-x-0 top-(--viewport-offset-top) flex h-(--viewport-height) w-full flex-col overflow-hidden bg-background md:relative md:inset-auto md:h-full md:flex-1"
         >
           <ChatHeader
             title={title}

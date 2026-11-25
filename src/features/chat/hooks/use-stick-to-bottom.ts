@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react"
 const BOTTOM_THRESHOLD = 80
 
 interface UseStickToBottomOptions {
+  /** `false` tant que le premier contenu (l'historique) n'est pas arrivé. */
+  isReady: boolean
   /** Toute valeur qui change quand du contenu est ajouté en bas de la liste. */
   trigger: unknown
   /** Force le défilement même si l'utilisateur lit l'historique (ex. message envoyé). */
@@ -17,22 +19,32 @@ function prefersReducedMotion() {
 }
 
 /**
- * Garde la liste collée en bas quand du contenu arrive ou quand elle change de
- * taille (clavier virtuel, pièces jointes), sans perturber l'utilisateur qui
- * remonte dans l'historique.
+ * Garde la liste collée en bas quand du contenu arrive ou change de taille
+ * (images chargées, clavier virtuel), sans perturber l'utilisateur qui remonte
+ * dans l'historique.
+ *
+ * `containerRef` : l'élément qui défile ; `contentRef` : son contenu, dont la
+ * croissance est suivie.
  */
-export function useStickToBottom<T extends HTMLElement>({
+export function useStickToBottom<T extends HTMLElement, C extends HTMLElement = HTMLDivElement>({
+  isReady,
   trigger,
   force = false,
 }: UseStickToBottomOptions) {
   const containerRef = useRef<T>(null)
-  const isAtBottomRef = useRef(true)
-  const hasMountedRef = useRef(false)
+  const contentRef = useRef<C>(null)
+  /** Intention de rester en bas : seul un défilement vers le haut de l'utilisateur la retire. */
+  const isPinnedRef = useRef(true)
+  const lastScrollTopRef = useRef(0)
+  const hasArrivedRef = useRef(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
 
   function scrollToBottom(behavior: ScrollBehavior = "smooth") {
     const container = containerRef.current
-    container?.scrollTo({
+    if (!container) return
+    isPinnedRef.current = true
+    setIsAtBottom(true)
+    container.scrollTo({
       top: container.scrollHeight,
       behavior: prefersReducedMotion() ? "instant" : behavior,
     })
@@ -42,35 +54,41 @@ export function useStickToBottom<T extends HTMLElement>({
     const container = containerRef.current
     if (!container) return
 
-    const distance =
-      container.scrollHeight - container.scrollTop - container.clientHeight
-    isAtBottomRef.current = distance < BOTTOM_THRESHOLD
-    setIsAtBottom(isAtBottomRef.current)
+    const { scrollTop, scrollHeight, clientHeight } = container
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < BOTTOM_THRESHOLD
+    // Nos propres défilements (et le contenu qui grandit) ne font que descendre :
+    // remonter est forcément un geste de l'utilisateur.
+    const hasScrolledUp = scrollTop < lastScrollTopRef.current
+    lastScrollTopRef.current = scrollTop
+
+    if (isNearBottom) isPinnedRef.current = true
+    else if (hasScrolledUp) isPinnedRef.current = false
+    setIsAtBottom(isPinnedRef.current)
   }
 
   useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true
+    if (!isReady) return
+    // L'historique s'affiche directement en bas, sans défiler à travers lui.
+    if (!hasArrivedRef.current) {
+      hasArrivedRef.current = true
       scrollToBottom("instant")
       return
     }
+    if (force || isPinnedRef.current) scrollToBottom()
+  }, [isReady, trigger, force])
 
-    if (force || isAtBottomRef.current) scrollToBottom()
-  }, [trigger, force])
-
-  // La liste rétrécit (ouverture du clavier…) : on garde les derniers messages visibles.
+  // La liste rétrécit (clavier) ou son contenu grandit (image chargée) : on reste en bas.
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const observer = new ResizeObserver(() => {
-      if (isAtBottomRef.current) {
-        container.scrollTop = container.scrollHeight
-      }
+      if (isPinnedRef.current) container.scrollTop = container.scrollHeight
     })
     observer.observe(container)
+    if (contentRef.current) observer.observe(contentRef.current)
     return () => observer.disconnect()
   }, [])
 
-  return { containerRef, isAtBottom, scrollToBottom, handleScroll }
+  return { containerRef, contentRef, isAtBottom, scrollToBottom, handleScroll }
 }

@@ -58,11 +58,12 @@ export function ChatHeader({
   const swap = useTempoTransition(transition.swap)
 
   return (
-    <header className="flex items-center gap-3 border-b bg-background/80 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 backdrop-blur-lg sm:px-4 sm:py-3">
+    <header className="flex items-center gap-3 border-b bg-background/80 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 backdrop-blur-lg sm:px-4 sm:py-3 md:min-h-[4.25rem] md:px-6">
+      {/* Sur grand écran, la liste des conversations reste affichée à côté. */}
       <Link
         href={ROUTES.home}
         aria-label="Retour à l'accueil"
-        className={buttonVariants({ variant: "ghost", size: "icon", className: "-mr-1 size-10 shrink-0 sm:size-8" })}
+        className={buttonVariants({ variant: "ghost", size: "icon", className: "-mr-1 size-10 shrink-0 sm:size-8 md:hidden" })}
       >
         <HugeiconsIcon icon={ArrowLeft01Icon} size={20} strokeWidth={2} />
       </Link>

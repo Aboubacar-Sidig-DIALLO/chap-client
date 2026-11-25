@@ -210,6 +210,9 @@
     /* Zone réellement visible (hors clavier virtuel), mise à jour par `useVisualViewport`. */
     --viewport-height: 100dvh;
     --viewport-offset-top: 0px;
+    /* Marge latérale d'une conversation sur grand écran : une colonne de lecture de 48rem au plus,
+     * centrée (le pourcentage se résout sur la largeur de l'élément qui l'emploie). */
+    --reading-gutter: max(1.5rem, calc((100% - 48rem) / 2));
   }
   * {
     @apply border-border outline-ring/50;
@@ -264,6 +267,24 @@
   @media (prefers-reduced-motion: no-preference) {
     &:active:not(:disabled, [aria-disabled="true"], [aria-haspopup]) {
       scale: var(--press-scale);
+    }
+  }
+}
+
+/*
+ * Avec une souris, une longue liste (messages, barre latérale) montre une barre de
+ * défilement fine au survol : on sait où l'on est et on peut la saisir. Au doigt,
+ * rien ne change (fondu de bord seulement).
+ */
+@utility scrollbar-subtle {
+  @media (pointer: fine) {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    scrollbar-gutter: stable;
+
+    &:hover,
+    &:focus-within {
+      scrollbar-color: color-mix(in oklch, var(--foreground) 22%, transparent) transparent;
     }
   }
 }

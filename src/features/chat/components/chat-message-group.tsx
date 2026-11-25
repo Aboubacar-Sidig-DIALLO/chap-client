@@ -68,11 +68,12 @@ export function ChatMessageGroup({
       <MessageContent className="gap-1">
         {!isOwn && <MessageHeader>{run.author.name}</MessageHeader>}
 
-        {run.messages.map((message) => (
+        {run.messages.map((message, index) => (
           <MessageItem
             key={message.id}
             message={message}
             isOwn={isOwn}
+            isFollowUp={index > 0}
             currentUserId={currentUserId}
             animateIn={historyIds !== null && !historyIds.has(message.id)}
             onRetry={onRetry}
@@ -100,6 +101,8 @@ export function ChatMessageGroup({
 interface MessageItemProps {
   message: ChatMessage
   isOwn: boolean
+  /** Pas le premier de sa suite : sa bulle se soude à la précédente. */
+  isFollowUp: boolean
   currentUserId: string
   /** Message arrivé en direct : il entre en scène (fondu, légère montée). */
   animateIn: boolean
@@ -131,6 +134,7 @@ function JumboEmojis({ emojis, label, isPending }: JumboEmojisProps) {
 function MessageItem({
   message,
   isOwn,
+  isFollowUp,
   currentUserId,
   animateIn,
   onRetry,
@@ -150,7 +154,7 @@ function MessageItem({
         <JumboEmojis emojis={jumboEmojis} label={message.content} isPending={message.status !== "sent"} />
       ) : (
         message.content && (
-          <MessageBubble isOwn={isOwn} status={message.status}>
+          <MessageBubble isOwn={isOwn} status={message.status} isFollowUp={isFollowUp}>
             {message.content}
           </MessageBubble>
         )
@@ -162,6 +166,8 @@ function MessageItem({
     <motion.div
       initial={animateIn ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0, transition: { ...rise, opacity: fade } }}
+      // Seul le dernier de la suite affiche son heure : au survol, chacun donne la sienne.
+      title={formatTime(message.createdAt)}
       // `@container` : la colonne de référence des largeurs max. des bulles et cartes (`cqw`),
       // quelles que soient les enveloppes intermédiaires (réactions).
       className="@container flex w-full flex-col items-start gap-1 group-data-[align=end]/message:items-end"

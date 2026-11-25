@@ -15,7 +15,7 @@ export function Section({ title, count, action, children }: SectionProps) {
 
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-2">
-      <div className="flex min-h-9 items-center justify-between gap-3 px-1">
+      <div className="flex min-h-9 items-center justify-between gap-3 px-1 md:min-h-8 md:px-2">
         <h2 id={titleId} className="text-sm font-semibold text-muted-foreground">
           {title}
           {count !== undefined && count > 0 && <span className="ml-1.5 font-normal tabular-nums">{count}</span>}
@@ -27,9 +27,13 @@ export function Section({ title, count, action, children }: SectionProps) {
   )
 }
 
-/** Liste de lignes dans une carte, séparées par un filet. */
+/** Liste de lignes : une carte à filets sur mobile, des lignes libres dans la barre latérale. */
 export function SectionList({ children }: { children: React.ReactNode }) {
-  return <ul className="divide-y overflow-hidden rounded-3xl border bg-card">{children}</ul>
+  return (
+    <ul className="divide-y overflow-hidden rounded-3xl border bg-card md:flex md:flex-col md:gap-0.5 md:divide-y-0 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
+      {children}
+    </ul>
+  )
 }
 
 /** Invitation affichée quand une section est vide. */

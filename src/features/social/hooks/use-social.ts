@@ -35,14 +35,23 @@ export interface AnnouncedNotice {
  * Amis, demandes et groupes de l'utilisateur connecté, avec les actions qui
  * les modifient. Tenus à jour en temps réel : une demande reçue apparaît
  * aussitôt, sans recharger la page.
+ *
+ * `activeKey` : conversation ouverte à l'écran ; ses messages sont lus sur place,
+ * ils ne sont ni comptés ni annoncés.
  */
-export function useSocial() {
+export function useSocial(activeKey: string | null = null) {
   const [overview, setOverview] = useState<FriendsOverview | null>(null)
   const [groups, setGroups] = useState<GroupSummary[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [announced, setAnnounced] = useState<AnnouncedNotice | null>(null)
   /** Messages reçus depuis l'arrivée sur l'accueil, par conversation (voir `conversationKey`). */
   const [unread, setUnread] = useState<Readonly<Record<string, number>>>({})
+  // Ouvrir une conversation la marque comme lue (état ajusté pendant le rendu).
+  const [openedKey, setOpenedKey] = useState(activeKey)
+  if (activeKey !== openedKey) {
+    setOpenedKey(activeKey)
+    if (activeKey && unread[activeKey]) setUnread((current) => ({ ...current, [activeKey]: 0 }))
+  }
   /** Numéro du dernier chargement lancé : une réponse dépassée est ignorée. */
   const latestLoadRef = useRef(0)
   const noticeCountRef = useRef(0)
@@ -73,6 +82,7 @@ export function useSocial() {
     },
     onMessage: (notice) => {
       const key = conversationKey(notice.conversation)
+      if (key === activeKey) return
       setUnread((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 }))
       announce({ type: "message", ...notice })
     },

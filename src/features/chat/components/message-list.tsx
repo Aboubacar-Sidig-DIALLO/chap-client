@@ -71,8 +71,9 @@ export function MessageList({
     setHistoryIds(new Set(messages.map((message) => message.id)))
   }
 
-  const { containerRef, isAtBottom, scrollToBottom, handleScroll } =
+  const { containerRef, contentRef, isAtBottom, scrollToBottom, handleScroll } =
     useStickToBottom<HTMLDivElement>({
+      isReady: isHistoryLoaded,
       trigger: `${lastMessage?.id}:${activeUsers.length}`,
       force: lastMessage?.author.id === currentUserId,
     })
@@ -93,7 +94,7 @@ export function MessageList({
   return (
     <ReducedMotionConfig>
       <div className="relative min-h-0 flex-1">
-        {/* Pas de barre de défilement : les bords s'estompent là où il reste des messages. */}
+        {/* Les bords s'estompent là où il reste des messages ; à la souris, une barre fine au survol. */}
         <ScrollFade asChild size={40} shrink={0} blur={0}>
           <div
             ref={containerRef}
@@ -101,68 +102,71 @@ export function MessageList({
             role="log"
             aria-label="Messages"
             aria-live="polite"
-            className="h-full overflow-y-auto overscroll-contain px-3 pt-4 pb-16 sm:px-4 sm:pt-6"
+            className="scrollbar-subtle h-full overflow-y-auto overscroll-contain px-3 pt-4 pb-16 sm:px-4 sm:pt-6 md:px-(--reading-gutter)"
           >
-            {messages.length === 0 ? (
-              isHistoryLoaded && <EmptyState />
-            ) : (
-              <div className="flex flex-col gap-6">
-                {sections.map((section) => (
-                  <section key={section.date} className="flex flex-col gap-4">
-                    <DaySeparator date={section.date} />
+            {/* Peu de messages : ils se posent en bas, près de la saisie, comme dans une messagerie. */}
+            <div ref={contentRef} className="flex min-h-full flex-col justify-end">
+              {messages.length === 0 ? (
+                isHistoryLoaded && <EmptyState />
+              ) : (
+                <div className="flex flex-col gap-6">
+                  {sections.map((section) => (
+                    <section key={section.date} className="flex flex-col gap-4">
+                      <DaySeparator date={section.date} />
 
-                    <MessageGroup className="gap-4">
-                      {section.runs.map((run) => {
-                        const first = run.messages[0]
+                      <MessageGroup className="gap-4">
+                        {section.runs.map((run) => {
+                          const first = run.messages[0]
 
-                        // Une trace de direct est toujours seule dans sa suite.
-                        if (first.call) {
+                          // Une trace de direct est toujours seule dans sa suite.
+                          if (first.call) {
+                            return (
+                              <CallLogEntry
+                                key={first.id}
+                                call={first.call}
+                                currentUserId={currentUserId}
+                                animateIn={historyIds !== null && !historyIds.has(first.id)}
+                                isLatest={first.id === latestCallId}
+                              />
+                            )
+                          }
+
                           return (
-                            <CallLogEntry
+                            <ChatMessageGroup
                               key={first.id}
-                              call={first.call}
+                              run={run}
+                              isOwn={run.author.id === currentUserId}
+                              receipts={receipts}
+                              historyIds={historyIds}
+                              showReceiptLabel={
+                                run.messages[run.messages.length - 1].id === lastOwnMessageId
+                              }
                               currentUserId={currentUserId}
-                              animateIn={historyIds !== null && !historyIds.has(first.id)}
-                              isLatest={first.id === latestCallId}
+                              onRetry={onRetry}
+                              onReact={onReact}
                             />
                           )
-                        }
-
-                        return (
-                          <ChatMessageGroup
-                            key={first.id}
-                            run={run}
-                            isOwn={run.author.id === currentUserId}
-                            receipts={receipts}
-                            historyIds={historyIds}
-                            showReceiptLabel={
-                              run.messages[run.messages.length - 1].id === lastOwnMessageId
-                            }
-                            currentUserId={currentUserId}
-                            onRetry={onRetry}
-                            onReact={onReact}
-                          />
-                        )
-                      })}
-                    </MessageGroup>
-                  </section>
-                ))}
-              </div>
-            )}
-
-            <AnimatePresence initial={false}>
-              {activeUsers.length > 0 && (
-                <motion.div
-                  key="typing"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0, transition: { ...rise, opacity: fade } }}
-                  exit={{ opacity: 0, transition: fade }}
-                  className="mt-4"
-                >
-                  <TypingIndicator activeUsers={activeUsers} />
-                </motion.div>
+                        })}
+                      </MessageGroup>
+                    </section>
+                  ))}
+                </div>
               )}
-            </AnimatePresence>
+
+              <AnimatePresence initial={false}>
+                {activeUsers.length > 0 && (
+                  <motion.div
+                    key="typing"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0, transition: { ...rise, opacity: fade } }}
+                    exit={{ opacity: 0, transition: fade }}
+                    className="mt-4"
+                  >
+                    <TypingIndicator activeUsers={activeUsers} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </ScrollFade>
 
@@ -221,7 +225,7 @@ function EmptyState() {
       fade
       blur={{ initialBlur: 2 }}
       slide={{ offset: 8 }}
-      className="flex h-full flex-col items-center justify-center gap-3 text-center"
+      className="flex flex-1 flex-col items-center justify-center gap-3 text-center"
     >
       <div className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
         <Mic size={26} animate="wiggle" animateOnHover="wiggle" />

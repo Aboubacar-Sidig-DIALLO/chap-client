@@ -174,7 +174,7 @@ export function ChatComposer({
         submit()
       }}
       className={cn(
-        "relative px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3",
+        "relative px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3 md:px-(--reading-gutter) md:pb-4",
         // En mode vocal, la barre se fond dans la page : l'orbe flotte au-dessus.
         view === "voice"
           ? "bg-linear-to-t from-background via-background to-background/0 pt-3"

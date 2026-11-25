@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Spinner } from "@/components/ui/spinner"
 import { authClient } from "@/lib/auth-client"
+import { cn } from "@/lib/utils"
 import { ROUTES } from "../lib/routes"
 
 export interface SessionUser {
@@ -16,7 +17,13 @@ export interface SessionUser {
  * Réserve une page aux utilisateurs connectés : sans session (ou quand elle
  * disparaît, après une déconnexion), direction la page de connexion.
  */
-export function SessionGate({ children }: { children: (user: SessionUser) => React.ReactNode }) {
+interface SessionGateProps {
+  children: (user: SessionUser) => React.ReactNode
+  /** Emplacement de l'attente, le temps de vérifier la session. */
+  fallbackClassName?: string
+}
+
+export function SessionGate({ children, fallbackClassName }: SessionGateProps) {
   const router = useRouter()
   const { data: session, isPending } = authClient.useSession()
 
@@ -26,9 +33,9 @@ export function SessionGate({ children }: { children: (user: SessionUser) => Rea
 
   if (!session) {
     return (
-      <main className="flex min-h-dvh items-center justify-center">
+      <div aria-busy={isPending} className={cn("flex min-h-dvh items-center justify-center", fallbackClassName)}>
         {isPending && <Spinner size={24} className="text-muted-foreground" />}
-      </main>
+      </div>
     )
   }
 

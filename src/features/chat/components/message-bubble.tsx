@@ -4,11 +4,14 @@ import type { MessageStatus } from "../types"
 interface MessageBubbleProps extends React.ComponentProps<"div"> {
   isOwn: boolean
   status?: MessageStatus
+  /** Suit une autre bulle du même auteur : elles se soudent côté auteur. */
+  isFollowUp?: boolean
 }
 
 export function MessageBubble({
   isOwn,
   status,
+  isFollowUp = false,
   className,
   ...props
 }: MessageBubbleProps) {
@@ -17,6 +20,7 @@ export function MessageBubble({
       data-slot="message-bubble"
       data-variant={isOwn ? "own" : "other"}
       data-status={status}
+      data-follow-up={isFollowUp || undefined}
       className={cn(
         // 15 px sur mobile : confort de lecture des messageries natives.
         // Largeur max. relative à la colonne des messages (`@container` du message).
@@ -25,6 +29,7 @@ export function MessageBubble({
         "transition-[opacity,background-color,color]",
         "data-[variant=other]:rounded-bl-md data-[variant=other]:bg-muted",
         "data-[variant=own]:rounded-br-md data-[variant=own]:bg-primary data-[variant=own]:text-primary-foreground",
+        "data-follow-up:data-[variant=other]:rounded-tl-md data-follow-up:data-[variant=own]:rounded-tr-md",
         "data-[status=sending]:opacity-60",
         "data-[status=failed]:bg-destructive/10 data-[status=failed]:text-destructive",
         className

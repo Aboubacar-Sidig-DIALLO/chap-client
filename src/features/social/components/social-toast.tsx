@@ -69,7 +69,7 @@ export function SocialToast({ announced, onDismiss, onAccept }: SocialToastProps
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex justify-center px-4"
+      className="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex justify-center px-4 md:top-4 md:justify-end md:px-6"
     >
       <AnimatePresence>
         {announced && (

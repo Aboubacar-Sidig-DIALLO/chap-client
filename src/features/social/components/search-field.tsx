@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
+import { useSearchShortcutLabel } from "../hooks/use-search-shortcut"
 import { SEARCH_MAX_LENGTH } from "../lib/config"
 
 interface SearchFieldProps {
@@ -16,6 +17,8 @@ interface SearchFieldProps {
 
 /** Champ de recherche de personnes, toujours à portée de main en haut de l'accueil. */
 export function SearchField({ value, onChange, isSearching, ref }: SearchFieldProps) {
+  const shortcutLabel = useSearchShortcutLabel()
+
   return (
     <div role="search" className="relative">
       <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-muted-foreground">
@@ -36,8 +39,16 @@ export function SearchField({ value, onChange, isSearching, ref }: SearchFieldPr
         autoCorrect="off"
         spellCheck={false}
         enterKeyHint="search"
-        className="h-12 pr-12 pl-11 text-base [&::-webkit-search-cancel-button]:hidden"
+        className="h-12 pr-12 pl-11 text-base md:h-10 md:text-sm [&::-webkit-search-cancel-button]:hidden"
       />
+      {!value && shortcutLabel && (
+        <kbd
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-3 my-auto hidden h-6 items-center rounded-md border bg-muted/60 px-1.5 font-sans text-[11px] font-medium text-muted-foreground pointer-fine:flex"
+        >
+          {shortcutLabel}
+        </kbd>
+      )}
       {value && (
         <Button
           variant="ghost"
