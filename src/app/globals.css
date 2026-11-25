@@ -1,26 +1,324 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Le thème suit celui du système (clair / sombre). */
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-read: var(--read);
+  --color-voice: var(--voice);
+  --color-voice-foreground: var(--voice-foreground);
+  /* Teinte de l'état d'écoute d'une carte vocale (`listen-card`). */
+  --color-tone: var(--tone);
+  --color-tone-ink: var(--tone-ink);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Barres d'un vocal en cours d'enregistrement (indicateur de présence, mini-lecteur). */
+  --animate-voice-bar: voice-bar 0.9s ease-in-out infinite;
+
+  /* Flèche « glissez pour annuler » qui invite au geste. */
+  --animate-nudge-left: nudge-left 1.2s ease-in-out infinite;
+
+  /* Chevron « glissez vers le haut pour verrouiller ». */
+  --animate-nudge-up: nudge-up 1.2s ease-in-out infinite;
+
+  @keyframes nudge-up {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    50% {
+      translate: 0 -4px;
+    }
+  }
+
+  @keyframes nudge-left {
+    0%,
+    100% {
+      translate: 0 0;
+    }
+    50% {
+      translate: -4px 0;
+    }
+  }
+
+  /* Onde qui s'échappe du bouton micro au repos : une invitation à parler. */
+  --animate-voice-breathe: voice-breathe 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+
+  @keyframes voice-breathe {
+    0% {
+      scale: 1;
+      opacity: 0.45;
+    }
+    100% {
+      scale: 1.6;
+      opacity: 0;
+    }
+  }
+
+  @keyframes voice-bar {
+    0%,
+    100% {
+      scale: 1 0.35;
+    }
+    50% {
+      scale: 1 1;
+    }
+  }
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  /* Accusé de lecture (double coche « lu »). */
+  --read: oklch(0.6 0.16 245);
+  /* Couleur de la voix : le bouton micro et ses ondes, signature de l'application. */
+  --voice: oklch(0.56 0.22 264);
+  --voice-foreground: oklch(0.99 0 0);
+  /* États d'écoute d'un vocal envoyé : ambre = en attente, violet = en écoute, vert = écouté. */
+  --listen-pending: oklch(0.72 0.16 65);
+  --listen-live: oklch(0.6 0.2 285);
+  --listen-done: oklch(0.66 0.15 160);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --read: oklch(0.74 0.14 240);
+    --voice: oklch(0.66 0.19 264);
+    --voice-foreground: oklch(0.99 0 0);
+    --listen-pending: oklch(0.8 0.14 70);
+    --listen-live: oklch(0.72 0.16 285);
+    --listen-done: oklch(0.76 0.14 160);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  :root {
+    /*
+     * Tokens Animate UI pour le CSS (générés par `scripts/css-timing.mjs` du skill) :
+     * `spring.press` en courbe `linear()`, `transition.color` (ease) et `scale.press`.
+     */
+    --press-scale: 0.97;
+    --press-duration: 400ms;
+    --press-ease: linear(0, 0.0261, 0.0935, 0.188, 0.2977, 0.4132, 0.5271, 0.6343, 0.7313, 0.8159, 0.8872, 0.9452, 0.9906, 1.0244, 1.048, 1.063, 1.0709, 1.0732, 1.0713, 1.0663, 1.0594, 1.0514, 1.0429, 1.0346, 1.0267, 1.0196, 1.0134, 1.0082, 1.004, 1.0007, 0.9982, 0.9965, 1, 0.9948, 0.9946, 0.9948, 1, 1, 1, 1);
+    --color-duration: 200ms;
+    --color-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+    color-scheme: light;
+    /* Zone réellement visible (hors clavier virtuel), mise à jour par `useVisualViewport`. */
+    --viewport-height: 100dvh;
+    --viewport-offset-top: 0px;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    /* Pas de rebond ni de « tirer pour rafraîchir » : comportement d'application. */
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /*
+   * Pas de barre de défilement : le défilement reste entier (molette, doigt,
+   * clavier), et les zones qui défilent l'indiquent par un fondu de bord (ScrollFade).
+   */
+  * {
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Supprime le délai de double-tap sur les éléments interactifs. */
+  a,
+  button,
+  input,
+  label,
+  textarea,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+}
+
+/*
+ * Retour d'appui (Animate UI, `recipes/press.md`) : le contrôle s'enfonce à 0.97
+ * sur le ressort `spring.press`, jamais au survol. Les couleurs changent sur
+ * `transition.color`. Sous « réduire les animations », seule la couleur répond.
+ * Une surface entière (carte, vignette) s'enfonce moins : `[--press-scale:0.985]`.
+ */
+@utility press {
+  transition-property: color, background-color, border-color, box-shadow, opacity, scale;
+  transition-duration:
+    var(--color-duration), var(--color-duration), var(--color-duration),
+    var(--color-duration), var(--color-duration), var(--press-duration);
+  transition-timing-function:
+    var(--color-ease), var(--color-ease), var(--color-ease), var(--color-ease),
+    var(--color-ease), var(--press-ease);
+
+  @media (prefers-reduced-motion: no-preference) {
+    &:active:not(:disabled, [aria-disabled="true"], [aria-haspopup]) {
+      scale: var(--press-scale);
+    }
+  }
+}
+
+/*
+ * Carte vocale teintée selon son état d'écoute (`data-listen`) : une seule couleur
+ * par état (`--tone`), d'où se déduisent un fond très clair, une bordure et un
+ * texte lisible, en thème clair comme sombre. Les enfants s'en servent via
+ * `bg-tone`, `text-tone-ink`… Le passage d'un état à l'autre se fait en fondu.
+ */
+@utility listen-card {
+  --tone-ink: color-mix(in oklch, var(--tone) 60%, var(--foreground));
+  border-width: 1px;
+  border-color: color-mix(in oklch, var(--tone) 30%, transparent);
+  background-color: color-mix(in oklch, var(--tone) 12%, var(--background));
+  color: var(--tone-ink);
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 400ms;
+  transition-timing-function: var(--color-ease);
+
+  &[data-listen="pending"] {
+    --tone: var(--listen-pending);
+  }
+  &[data-listen="live"] {
+    --tone: var(--listen-live);
+    /* Halo discret : il se passe quelque chose en ce moment. */
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--tone) 18%, transparent);
+  }
+  &[data-listen="done"] {
+    --tone: var(--listen-done);
+  }
+}
+
+/*
+ * Onde autour du bouton micro : elle grandit avec le volume, écrit à chaque image
+ * dans `--level` (0 à 1) sans re-rendu React. `--ring-gain` règle son amplitude.
+ * Sous « réduire les animations », elle reste immobile.
+ */
+@utility voice-ring {
+  scale: 1;
+  transition: scale 90ms linear;
+
+  @media (prefers-reduced-motion: no-preference) {
+    scale: calc(1 + var(--level, 0) * var(--ring-gain, 0.7));
+  }
+}
+
+/* Les animations Motion gèrent elles-mêmes « réduire les animations » (ReducedMotionConfig) ;
+ * ceci couvre le CSS restant. Les indicateurs de chargement continuent, plus lentement (règle A4). */
+@media (prefers-reduced-motion: reduce) {
+  *:not([data-slot="spinner"]),
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
