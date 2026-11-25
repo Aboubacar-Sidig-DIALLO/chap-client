@@ -74,7 +74,7 @@ function describeMediaError(error: unknown, device: keyof typeof MEDIA_ERRORS) {
 }
 
 /**
- * Le direct du salon (appel audio et vidéo), indépendant de React : signalisation
+ * Le direct d'une conversation (appel audio et vidéo), indépendant de React : signalisation
  * par la connexion du chat, une liaison WebRTC par autre participant (maillage),
  * mesure du volume de chacun pour les orbes vocaux.
  */

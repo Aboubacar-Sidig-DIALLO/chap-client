@@ -22,14 +22,13 @@ import { VoicePlaybackProvider } from "./voice-playback"
 
 /** Titre affiché le temps que le serveur confirme la conversation. */
 const PENDING_TITLE: Record<ConversationRef["type"], string> = {
-  salon: "Salon général",
   direct: "Conversation",
   group: "Groupe",
 }
 
 interface ChatRoomProps {
   currentUser: ChatUser
-  /** Le salon, un ami ou un groupe. */
+  /** Un ami ou un groupe. */
   conversation: ConversationRef
   /** La session n'est plus valide (expirée, révoquée) : il faut se reconnecter. */
   onSessionExpired: () => void

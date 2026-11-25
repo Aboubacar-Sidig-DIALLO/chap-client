@@ -6,7 +6,7 @@ import type { ConversationRef } from "../types"
 import { ChatRoom } from "./chat-room"
 
 /**
- * Une conversation (salon, ami ou groupe), réservée aux utilisateurs connectés ;
+ * Une conversation (ami ou groupe), réservée aux utilisateurs connectés ;
  * l'identité vient de la session.
  */
 interface ChatAppProps {

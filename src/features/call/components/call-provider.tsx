@@ -30,7 +30,7 @@ interface CallProviderProps {
   children: React.ReactNode
 }
 
-/** Le direct du salon, pour toute la conversation (en-tête, scène, mini-direct). */
+/** Le direct de la conversation, pour toute la page (en-tête, scène, mini-direct). */
 export function CallProvider({ socket, children }: CallProviderProps) {
   const [session] = useState(() => new CallSession(socket))
   const [isExpanded, setIsExpanded] = useState(true)

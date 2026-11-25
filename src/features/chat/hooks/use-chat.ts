@@ -62,7 +62,7 @@ interface UseChatOptions {
 }
 
 /**
- * Une conversation en temps réel : le salon, un ami ou un groupe.
+ * Une conversation en temps réel, avec un ami ou dans un groupe.
  * Rien n'est conservé sur l'appareil : les messages vivent en mémoire, une heure au plus.
  */
 export function useChat(

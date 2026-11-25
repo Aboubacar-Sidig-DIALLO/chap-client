@@ -116,9 +116,8 @@ export interface ReadReceipt {
   readSeq: number
 }
 
-/** Conversation à ouvrir : le salon, un ami ou un groupe (le serveur vérifie l'accès). */
+/** Conversation à ouvrir : avec un ami ou d'un groupe (le serveur vérifie l'accès). */
 export type ConversationRef =
-  | { type: "salon" }
   | { type: "direct"; userId: string }
   | { type: "group"; groupId: string }
 
