@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Figtree } from "next/font/google"
+import { SessionEndedListener } from "@/features/auth/components/session-ended-listener"
 import { IncomingCallNotifier } from "@/features/social/components/incoming-call"
 import "./globals.css"
 
@@ -34,6 +35,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         {/* Les appels des amis et des groupes sonnent sur toutes les pages. */}
         <IncomingCallNotifier />
+        {/* Sessions fermées depuis un autre appareil : retour à la connexion, partout. */}
+        <SessionEndedListener />
       </body>
     </html>
   )

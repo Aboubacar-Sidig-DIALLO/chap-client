@@ -138,6 +138,9 @@ export function useChat(
       },
       "conversation:ready": setConversationInfo,
       "conversation:closed": () => setUnavailableReason("closed"),
+      // Sessions fermées (adresse changée, compte supprimé) : le serveur coupe la
+      // connexion sans nouvel essai ; on le traite comme une session refusée.
+      "session:ended": reportUnauthorized,
       "chat:history": (history) => {
         setMessages((local) => mergeHistory(history, local))
         setIsHistoryLoaded(true)

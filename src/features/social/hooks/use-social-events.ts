@@ -20,8 +20,13 @@ interface SocialEventHandlers {
   onCallStarted?: (invite: CallInvite) => void
   /** Un appel a commencé, changé de participants ou pris fin. */
   onCallChanged?: (change: CallChange) => void
-  /** Connexion impossible (serveur injoignable, session expirée…) ; nouvel essai automatique. */
-  onConnectError?: () => void
+  /** Toutes vos sessions ont été fermées, ici ou depuis un autre appareil. */
+  onSessionEnded?: () => void
+  /**
+   * Connexion impossible ; nouvel essai automatique. `error.message` vaut
+   * `UNAUTHORIZED` quand la session n'est plus valide.
+   */
+  onConnectError?: (error: Error) => void
 }
 
 /** Écoute les événements sociaux en temps réel, tant que le composant est affiché. */
@@ -32,17 +37,19 @@ export function useSocialEvents(handlers: SocialEventHandlers) {
   const handlePresence = useEffectEvent((change: PresenceChange) => handlers.onPresence?.(change))
   const handleCallStarted = useEffectEvent((invite: CallInvite) => handlers.onCallStarted?.(invite))
   const handleCallChanged = useEffectEvent((change: CallChange) => handlers.onCallChanged?.(change))
-  const handleConnectError = useEffectEvent(() => handlers.onConnectError?.())
+  const handleSessionEnded = useEffectEvent(() => handlers.onSessionEnded?.())
+  const handleConnectError = useEffectEvent((error: Error) => handlers.onConnectError?.(error))
 
   useEffect(() => {
     const socket = acquireSocialSocket()
     const onConnect = () => handleConnect()
-    const onConnectError = () => handleConnectError()
+    const onConnectError = (error: Error) => handleConnectError(error)
     const onChange = ({ notice }: { notice: SocialNotice | null }) => handleChange(notice)
     const onMessage = (notice: MessageNotice) => handleMessage(notice)
     const onPresence = (change: PresenceChange) => handlePresence(change)
     const onCallStarted = (invite: CallInvite) => handleCallStarted(invite)
     const onCallChanged = (change: CallChange) => handleCallChanged(change)
+    const onSessionEnded = () => handleSessionEnded()
 
     socket.on("connect", onConnect)
     socket.on("connect_error", onConnectError)
@@ -51,6 +58,7 @@ export function useSocialEvents(handlers: SocialEventHandlers) {
     socket.on("presence:changed", onPresence)
     socket.on("call:started", onCallStarted)
     socket.on("call:changed", onCallChanged)
+    socket.on("session:ended", onSessionEnded)
     // Connexion partagée déjà ouverte par un autre composant : on charge tout de suite.
     if (socket.connected) handleConnect()
 
@@ -62,6 +70,7 @@ export function useSocialEvents(handlers: SocialEventHandlers) {
       socket.off("presence:changed", onPresence)
       socket.off("call:started", onCallStarted)
       socket.off("call:changed", onCallChanged)
+      socket.off("session:ended", onSessionEnded)
       releaseSocialSocket()
     }
   }, [])

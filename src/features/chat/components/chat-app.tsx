@@ -1,7 +1,7 @@
 "use client"
 
 import { SessionGate } from "@/features/auth/components/session-gate"
-import { authClient } from "@/lib/auth-client"
+import { refreshSession } from "@/features/auth/lib/session-signal"
 import type { ConversationRef } from "../types"
 import { ChatRoom } from "./chat-room"
 
@@ -21,12 +21,13 @@ export function ChatApp({ conversation, autoJoinCall, onAutoJoinHandled }: ChatA
     <SessionGate>
       {({ id, name }) => (
         // `key` : nouvelle connexion et état vierge si l'utilisateur change.
-        // Session refusée par le serveur : on se déconnecte, `SessionGate` renvoie à la connexion.
+        // Session refusée ou fermée par le serveur : on la relit ; si elle n'existe
+        // plus, `SessionGate` renvoie à la connexion.
         <ChatRoom
           key={id}
           currentUser={{ id, name }}
           conversation={conversation}
-          onSessionExpired={() => void authClient.signOut()}
+          onSessionExpired={refreshSession}
           autoJoinCall={autoJoinCall}
           onAutoJoinHandled={onAutoJoinHandled}
         />

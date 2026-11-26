@@ -1,11 +1,11 @@
 "use client"
 
-import { Logout01Icon } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import type { SessionUser } from "@/features/auth/components/session-gate"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { authClient } from "@/lib/auth-client"
+import { Logout01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 
 /** Bonjour le matin et l'après-midi, bonsoir à partir de 18 h. */
 function greeting() {

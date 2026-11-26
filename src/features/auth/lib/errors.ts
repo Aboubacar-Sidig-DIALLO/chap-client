@@ -11,6 +11,8 @@ const MESSAGES: Record<string, string> = {
   NAME_TOO_LONG: "Ce nom est trop long.",
   ACCOUNT_EXISTS: "Un compte existe déjà avec cette adresse.",
   ACCOUNT_NOT_FOUND: "Aucun compte n'est associé à cette adresse.",
+  EMAIL_UNCHANGED: "C'est déjà l'adresse de votre compte.",
+  EMAIL_MISMATCH: "Ce n'est pas l'adresse de votre compte.",
 }
 
 export function getAuthErrorMessage(error: AuthError) {

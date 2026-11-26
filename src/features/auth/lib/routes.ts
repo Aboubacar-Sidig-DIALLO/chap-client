@@ -4,6 +4,8 @@ export const ROUTES = {
   signIn: "/connexion",
   /** Accueil, une fois connecté : amis et groupes. */
   home: "/",
+  /** Son profil : nom, adresse email, suppression du compte. */
+  profile: "/profil",
   /** Conversation privée avec un ami. */
   friend: (userId: string) => `/amis/${encodeURIComponent(userId)}`,
   /** Conversation d'un groupe. */

@@ -1,9 +1,9 @@
 "use client"
 
-import { Suspense } from "react"
-import { usePathname } from "next/navigation"
 import { SessionGate } from "@/features/auth/components/session-gate"
 import { cn } from "@/lib/utils"
+import { usePathname } from "next/navigation"
+import { Suspense } from "react"
 import { conversationKeyFromPath } from "../lib/conversation"
 import { HomeSidebar, SIDEBAR_FRAME } from "./home-sidebar"
 

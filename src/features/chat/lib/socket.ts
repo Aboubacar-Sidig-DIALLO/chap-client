@@ -28,6 +28,8 @@ interface ServerToClientEvents {
   "conversation:ready": (conversation: ConversationInfo) => void
   /** Accès retiré (ami retiré, groupe quitté) : le serveur ferme la connexion. */
   "conversation:closed": () => void
+  /** Toutes les sessions de l'utilisateur ont été fermées : le serveur ferme la connexion. */
+  "session:ended": () => void
   "chat:history": (messages: ServerMessage[]) => void
   "message:new": (message: ServerMessage) => void
   "users:online": (users: ChatUser[]) => void

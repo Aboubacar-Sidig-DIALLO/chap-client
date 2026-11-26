@@ -10,6 +10,7 @@ import { ROUTES } from "../lib/routes"
 export interface SessionUser {
   id: string
   name: string
+  email: string
   image?: string | null
 }
 
