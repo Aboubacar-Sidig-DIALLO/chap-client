@@ -1,17 +1,17 @@
 "use client"
 
-import { Logout01Icon, UserGroupIcon } from "@hugeicons/core-free-icons"
+import { useState } from "react"
+import { InformationCircleIcon, UserGroupIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { ConfirmDialog } from "@/components/confirm-dialog"
+import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/features/auth/lib/routes"
-import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { conversationKey, type GroupSummary, type PublicUser } from "../types"
 import { CreateGroupDialog, type DialogState } from "./create-group-dialog"
+import { GroupAvatar } from "./group-avatar"
+import { GroupInfoDialog } from "./group-info-dialog"
 import { ListRow, REVEAL_ON_HOVER } from "./list-row"
 import { JoinCallLink, OngoingCallLabel } from "./ongoing-call"
 import { Section, SectionEmpty, SectionList } from "./section"
-
-const MAX_VISIBLE_AVATARS = 3
 
 /** « Vous et Léa », « Vous, Léa et Tom », « Vous, Léa, Tom et 3 autres ». */
 function membersLabel(others: PublicUser[]) {
@@ -28,7 +28,6 @@ interface GroupsSectionProps {
   groups: GroupSummary[]
   friends: PublicUser[]
   onCreate: (input: { name: string; memberIds: string[] }) => Promise<unknown>
-  onLeave: (groupId: string) => Promise<unknown>
   /** Messages non lus reçus d'une conversation (voir `conversationKey`). */
   unreadCount: (key: string) => number
   /** Conversation ouverte à l'écran (voir `conversationKey`). */
@@ -36,34 +35,24 @@ interface GroupsSectionProps {
   createGroupDialog: DialogState
 }
 
-/** Avatars superposés des premiers membres. */
-function GroupAvatars({ members }: { members: PublicUser[] }) {
-  return (
-    <div aria-hidden className="flex shrink-0 -space-x-3">
-      {members.slice(0, MAX_VISIBLE_AVATARS).map((member) => (
-        <UserAvatar
-          key={member.id}
-          user={{ id: member.id, name: member.name, avatarUrl: member.image ?? undefined }}
-          className="ring-2 ring-card md:ring-sidebar"
-        />
-      ))}
-    </div>
-  )
-}
-
 export function GroupsSection({
   currentUserId,
   groups,
   friends,
   onCreate,
-  onLeave,
   unreadCount,
   activeKey,
   createGroupDialog,
 }: GroupsSectionProps) {
+  /** Groupe de la fiche, gardé à la fermeture pour qu'elle s'efface en douceur. */
+  const [infoGroupId, setInfoGroupId] = useState<string | null>(null)
+  const [isInfoOpen, setIsInfoOpen] = useState(false)
+
   return (
+    <>
     <Section
       title="Groupes"
+      icon={UserGroupIcon}
       count={groups.length}
       action={<CreateGroupDialog {...createGroupDialog} friends={friends} onCreate={onCreate} />}
     >
@@ -86,7 +75,7 @@ export function GroupsSection({
                 href={ROUTES.group(group.id)}
                 isActive={key === activeKey}
                 title={group.name}
-                leading={<GroupAvatars members={others.length > 0 ? others : group.members} />}
+                leading={<GroupAvatar group={group} />}
                 description={group.call ? <OngoingCallLabel call={group.call} /> : membersLabel(others)}
                 unreadCount={unreadCount(key)}
                 actions={
@@ -94,15 +83,18 @@ export function GroupsSection({
                     {canJoinCall && (
                       <JoinCallLink href={ROUTES.group(group.id)} label={`Rejoindre l'appel du groupe ${group.name}`} />
                     )}
-                    <ConfirmDialog
-                      trigger={<HugeiconsIcon icon={Logout01Icon} size={18} strokeWidth={2} />}
-                      triggerLabel={`Quitter le groupe ${group.name}`}
-                      triggerClassName={REVEAL_ON_HOVER}
-                      title={`Quitter « ${group.name} » ?`}
-                      description="Les autres membres resteront dans le groupe ; vous n'en ferez plus partie."
-                      confirmLabel="Quitter"
-                      onConfirm={() => void onLeave(group.id)}
-                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Infos du groupe ${group.name}`}
+                      onClick={() => {
+                        setInfoGroupId(group.id)
+                        setIsInfoOpen(true)
+                      }}
+                      className={`size-10 text-muted-foreground sm:size-8 ${REVEAL_ON_HOVER}`}
+                    >
+                      <HugeiconsIcon icon={InformationCircleIcon} size={18} strokeWidth={2} />
+                    </Button>
                   </>
                 }
               />
@@ -111,5 +103,14 @@ export function GroupsSection({
         </SectionList>
       )}
     </Section>
+    {infoGroupId && (
+      <GroupInfoDialog
+        groupId={infoGroupId}
+        currentUserId={currentUserId}
+        open={isInfoOpen}
+        onOpenChange={setIsInfoOpen}
+      />
+    )}
+    </>
   )
 }

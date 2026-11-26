@@ -153,14 +153,6 @@ export function useSocial(activeKey: string | null = null) {
     return group
   }
 
-  async function leaveGroup(groupId: string) {
-    const hasLeft = await run(async () => {
-      await socialApi.leaveGroup(groupId)
-      return true
-    })
-    if (hasLeft) setGroups((current) => current?.filter((group) => group.id !== groupId) ?? null)
-  }
-
   return {
     overview,
     groups,
@@ -175,6 +167,5 @@ export function useSocial(activeKey: string | null = null) {
     addFriend,
     removeFriend,
     createGroup,
-    leaveGroup,
   }
 }

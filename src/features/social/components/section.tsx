@@ -1,7 +1,10 @@
 import { useId } from "react"
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 
 interface SectionProps {
   title: string
+  /** Icône qui identifie la section d'un coup d'œil (amis, groupes…). */
+  icon?: IconSvgElement
   /** Affiché à côté du titre (ex. nombre d'amis). */
   count?: number
   /** Action principale de la section (ex. « Nouveau groupe »). */
@@ -10,7 +13,7 @@ interface SectionProps {
 }
 
 /** Bloc titré de l'accueil ; le contenu est une carte arrondie. */
-export function Section({ title, count, action, children }: SectionProps) {
+export function Section({ title, icon, count, action, children }: SectionProps) {
   const titleId = useId()
 
   return (
@@ -20,6 +23,14 @@ export function Section({ title, count, action, children }: SectionProps) {
           id={titleId}
           className="flex items-center gap-2 text-sm font-semibold text-muted-foreground md:text-xs md:font-medium md:tracking-wider md:uppercase"
         >
+          {icon && (
+            <span
+              aria-hidden
+              className="grid size-6 shrink-0 place-items-center rounded-lg bg-foreground/6 text-foreground/70 md:size-5 md:rounded-md"
+            >
+              <HugeiconsIcon icon={icon} strokeWidth={2} className="size-3.5 md:size-3" />
+            </span>
+          )}
           {title}
           {count !== undefined && count > 0 && (
             <span className="rounded-full bg-foreground/6 px-1.5 py-px text-xs font-medium tracking-normal tabular-nums">

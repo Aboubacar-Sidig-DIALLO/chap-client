@@ -125,6 +125,8 @@ export type ConversationRef =
 export interface ConversationInfo {
   type: ConversationRef["type"]
   title: string
+  /** Photo du groupe, relative à l'API ; `null` sinon. */
+  photoUrl: string | null
 }
 
 /** Pourquoi la conversation n'est pas (ou plus) accessible. */

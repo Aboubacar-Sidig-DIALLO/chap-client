@@ -87,7 +87,6 @@ export function HomeContent({
         groups={social.groups}
         friends={social.overview.friends}
         onCreate={social.createGroup}
-        onLeave={social.leaveGroup}
         unreadCount={social.unreadCount}
         activeKey={activeKey}
         createGroupDialog={createGroupDialog}

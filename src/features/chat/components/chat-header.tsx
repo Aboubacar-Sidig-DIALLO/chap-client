@@ -17,6 +17,7 @@ import {
 import { AvatarGroupCount } from "@/components/ui/avatar"
 import { buttonVariants } from "@/components/ui/button"
 import { ROUTES } from "@/features/auth/lib/routes"
+import { GroupAvatar } from "@/features/social/components/group-avatar"
 import { PresenceAvatar } from "@/features/social/components/presence-avatar"
 import { useNow } from "@/features/social/hooks/use-now"
 import { formatPresence } from "@/features/social/lib/presence"
@@ -49,10 +50,14 @@ interface DirectHeader {
   friendPresence: Presence | null
 }
 
-/** Groupe : qui a la conversation ouverte en ce moment. */
+/** Groupe : sa photo, qui a la conversation ouverte, et l'accès à sa fiche. */
 interface GroupHeader {
   type: "group"
+  groupId: string
+  photoUrl: string | null
   onlineUsers: ChatUser[]
+  /** Ouvre la fiche du groupe (membres, photo, nom). */
+  onOpenDetails: () => void
 }
 
 type ChatHeaderProps = (DirectHeader | GroupHeader) & {
@@ -65,7 +70,7 @@ type ChatHeaderProps = (DirectHeader | GroupHeader) & {
 /**
  * En-tête de la conversation. Entre amis, comme au téléphone : son avatar,
  * son nom et sa présence (« En ligne », « Hors ligne depuis 5 min »).
- * En groupe : qui est là en ce moment.
+ * En groupe : qui est là en ce moment ; toucher son nom ouvre sa fiche.
  */
 export function ChatHeader(props: ChatHeaderProps) {
   const { title, connectionStatus, actions } = props
@@ -83,22 +88,49 @@ export function ChatHeader(props: ChatHeaderProps) {
         <HugeiconsIcon icon={ArrowLeft01Icon} size={20} strokeWidth={2} />
       </Link>
 
-      {props.type === "direct" && <FriendAvatar friend={props.friend} presence={props.friendPresence} />}
+      {/* Groupe : le bouton du titre s'étend à toute l'identité (photo, nom, statut). */}
+      <div
+        className={cn(
+          "relative flex min-w-0 flex-1 items-center gap-3",
+          props.type === "group" && "-my-1 -ml-1.5 rounded-xl py-1 pl-1.5 transition-colors has-[button:hover]:bg-muted/60"
+        )}
+      >
+        {props.type === "direct" ? (
+          <FriendAvatar friend={props.friend} presence={props.friendPresence} />
+        ) : (
+          <GroupAvatar group={{ id: props.groupId, name: title, photoUrl: props.photoUrl }} size="default" />
+        )}
 
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <h1 className="truncate text-base font-semibold sm:text-sm">{title}</h1>
-          {/* Application de l'instant : rappel discret que les messages ne durent qu'une heure. */}
-          <span
-            title="Les messages disparaissent une heure après leur envoi"
-            className="flex shrink-0 items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
-          >
-            <HugeiconsIcon icon={HourglassIcon} size={11} strokeWidth={2.5} aria-hidden />
-            1 h
-            <span className="sr-only"> : les messages disparaissent une heure après leur envoi</span>
-          </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <h1 className="truncate text-base font-semibold sm:text-sm">
+              {props.type === "group" ? (
+                <button
+                  type="button"
+                  onClick={props.onOpenDetails}
+                  aria-haspopup="dialog"
+                  title="Infos du groupe"
+                  className="max-w-full truncate text-left outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-[3px] focus-visible:after:ring-ring/50"
+                >
+                  {title}
+                  <span className="sr-only"> : infos du groupe</span>
+                </button>
+              ) : (
+                title
+              )}
+            </h1>
+            {/* Application de l'instant : rappel discret que les messages ne durent qu'une heure. */}
+            <span
+              title="Les messages disparaissent une heure après leur envoi"
+              className="relative z-10 flex shrink-0 items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+            >
+              <HugeiconsIcon icon={HourglassIcon} size={11} strokeWidth={2.5} aria-hidden />
+              1 h
+              <span className="sr-only"> : les messages disparaissent une heure après leur envoi</span>
+            </span>
+          </div>
+          <StatusText status={status} />
         </div>
-        <StatusText status={status} />
       </div>
 
       {props.type === "group" && connectionStatus === "connected" && (

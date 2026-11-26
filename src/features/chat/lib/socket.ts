@@ -27,6 +27,8 @@ export type SendMessageAck =
 interface ServerToClientEvents {
   /** Conversation ouverte (accès vérifié), juste avant son historique. */
   "conversation:ready": (conversation: ConversationInfo) => void
+  /** Le groupe a changé de nom ou de photo. */
+  "conversation:updated": (conversation: ConversationInfo) => void
   /** Accès retiré (ami retiré, groupe quitté) : le serveur ferme la connexion. */
   "conversation:closed": () => void
   /** Toutes les sessions de l'utilisateur ont été fermées : le serveur ferme la connexion. */

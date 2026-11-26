@@ -1,11 +1,15 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { ROUTES } from "@/features/auth/lib/routes"
 import { AutoJoinCall } from "@/features/call/components/auto-join-call"
 import { CallMini } from "@/features/call/components/call-mini"
 import { CallProvider } from "@/features/call/components/call-provider"
 import { CallStage } from "@/features/call/components/call-stage"
 import { LiveBanner } from "@/features/call/components/live-banner"
 import { LiveButton } from "@/features/call/components/live-button"
+import { GroupInfoDialog } from "@/features/social/components/group-info-dialog"
 import { useAttachmentDrafts } from "../hooks/use-attachment-drafts"
 import { useChat } from "../hooks/use-chat"
 import { useUnreadTitle } from "../hooks/use-unread-title"
@@ -69,6 +73,8 @@ export function ChatRoom({
     toggleReaction,
   } = useChat(currentUser, conversation, { onUnauthorized: onSessionExpired })
   const attachments = useAttachmentDrafts()
+  const router = useRouter()
+  const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false)
   useUnreadTitle(unreadCount)
   useVisualViewport()
 
@@ -80,7 +86,13 @@ export function ChatRoom({
   const audience =
     conversation.type === "direct"
       ? { type: "direct" as const, friend: { id: conversation.userId, name: title }, friendPresence }
-      : { type: "group" as const, onlineUsers }
+      : {
+          type: "group" as const,
+          groupId: conversation.groupId,
+          photoUrl: conversationInfo?.photoUrl ?? null,
+          onlineUsers,
+          onOpenDetails: () => setIsGroupInfoOpen(true),
+        }
 
   return (
     // L'appel (audio / vidéo) partage la connexion du chat.
@@ -140,6 +152,17 @@ export function ChatRoom({
 
           {/* La scène de l'appel recouvre toute la conversation quand elle est ouverte. */}
           <CallStage />
+
+          {conversation.type === "group" && (
+            <GroupInfoDialog
+              groupId={conversation.groupId}
+              currentUserId={currentUser.id}
+              open={isGroupInfoOpen}
+              onOpenChange={setIsGroupInfoOpen}
+              // Plus membre : la conversation se ferme, on revient à l'accueil.
+              onLeft={() => router.push(ROUTES.home)}
+            />
+          )}
         </FileDropZone>
       </VoicePlaybackProvider>
     </CallProvider>

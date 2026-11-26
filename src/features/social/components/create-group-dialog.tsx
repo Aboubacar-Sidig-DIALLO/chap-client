@@ -1,17 +1,17 @@
 "use client"
 
 import { useState } from "react"
-import { Add01Icon, Tick02Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Dialog } from "@animate-ui/react/primitives/base-ui/dialog"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
-import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { getErrorMessage } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { GROUP_MAX_MEMBERS, GROUP_NAME_MAX_LENGTH } from "../lib/config"
 import type { PublicUser } from "../types"
+import { FriendPicker, toggleId } from "./friend-picker"
 
 /** Ouverture d'une fenêtre, tenue par le parent. */
 export interface DialogState {
@@ -85,11 +85,7 @@ function CreateGroupForm({
 
   function toggle(userId: string) {
     setError(null)
-    setSelectedIds((current) => {
-      const next = new Set(current)
-      if (!next.delete(userId)) next.add(userId)
-      return next
-    })
+    setSelectedIds((current) => toggleId(current, userId))
   }
 
   async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
@@ -125,41 +121,7 @@ function CreateGroupForm({
         />
       </label>
 
-      <fieldset className="flex min-h-0 flex-col gap-1.5">
-        <legend className="mb-1.5 flex w-full justify-between px-1 text-sm font-medium">
-          Membres
-          <span className="font-normal text-muted-foreground tabular-nums">
-            {selectedIds.size > 0 && `${selectedIds.size} sélectionné${selectedIds.size > 1 ? "s" : ""}`}
-          </span>
-        </legend>
-        <ul className="-mx-2 min-h-0 overflow-y-auto overscroll-contain">
-          {friends.map((friend) => {
-            const isSelected = selectedIds.has(friend.id)
-            return (
-              <li key={friend.id}>
-                {/* Case à cocher native (clavier, lecteurs d'écran), habillée en ligne tactile. */}
-                <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl px-2 transition-colors hover:bg-muted has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    disabled={!isSelected && isFull}
-                    onChange={() => toggle(friend.id)}
-                    className="peer sr-only"
-                  />
-                  <UserAvatar user={{ id: friend.id, name: friend.name, avatarUrl: friend.image ?? undefined }} />
-                  <span className="min-w-0 flex-1 truncate">{friend.name}</span>
-                  <span
-                    aria-hidden
-                    className="flex size-6 items-center justify-center rounded-full border-2 border-border text-transparent transition-colors peer-checked:border-voice peer-checked:bg-voice peer-checked:text-voice-foreground"
-                  >
-                    <HugeiconsIcon icon={Tick02Icon} size={14} strokeWidth={3} />
-                  </span>
-                </label>
-              </li>
-            )
-          })}
-        </ul>
-      </fieldset>
+      <FriendPicker friends={friends} selectedIds={selectedIds} onToggle={toggle} isFull={isFull} />
 
       {error && (
         <p role="alert" className="text-sm text-destructive">

@@ -42,7 +42,7 @@ export function SearchResults({ query, results, isSearching, error, onAdd, onRem
   }
 
   return (
-    <Section title="Résultats" count={results.length}>
+    <Section title="Résultats" icon={Search01Icon} count={results.length}>
       {/* Résultats précédents atténués pendant la recherche suivante. */}
       <div aria-busy={isSearching} className={cn("transition-opacity", isSearching && "opacity-60")}>
         <SectionList>

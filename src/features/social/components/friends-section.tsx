@@ -1,6 +1,6 @@
 "use client"
 
-import { UserAdd01Icon } from "@hugeicons/core-free-icons"
+import { UserAdd01Icon, UserMultipleIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@/components/ui/button"
 import { useNow } from "../hooks/use-now"
@@ -43,7 +43,7 @@ export function FriendsSection({
   return (
     <>
       {incoming.length > 0 && (
-        <Section title="Demandes reçues" count={incoming.length}>
+        <Section title="Demandes reçues" icon={UserAdd01Icon} count={incoming.length}>
           <SectionList>
             {incoming.map((user) => (
               <PersonRow
@@ -64,7 +64,7 @@ export function FriendsSection({
         </Section>
       )}
 
-      <Section title="Amis" count={friends.length}>
+      <Section title="Amis" icon={UserMultipleIcon} count={friends.length}>
         {friends.length === 0 && outgoing.length === 0 ? (
           <SectionEmpty
             icon={<HugeiconsIcon icon={UserAdd01Icon} strokeWidth={2} />}
