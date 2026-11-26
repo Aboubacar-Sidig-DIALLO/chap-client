@@ -1,12 +1,12 @@
 import type { Metadata } from "next"
-import { ConversationPlaceholder } from "@/features/social/components/conversation-placeholder"
+import { WelcomePanel } from "@/features/social/components/welcome-panel"
 
 export const metadata: Metadata = { title: "Accueil" }
 
 /**
  * Accueil : sur mobile, la liste des amis et groupes (barre latérale de la coque) ;
- * sur grand écran, ce panneau invite à choisir une conversation.
+ * sur grand écran, ce panneau salue l'utilisateur et propose de quoi démarrer.
  */
 export default function Home() {
-  return <ConversationPlaceholder />
+  return <WelcomePanel />
 }

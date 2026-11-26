@@ -13,10 +13,10 @@ export function SectionsSkeleton() {
     <div aria-busy aria-label="Chargement de vos amis et groupes" className="flex flex-col gap-6">
       {[3, 2].map((rows, section) => (
         <div key={section} className="flex flex-col gap-2">
-          <div className="mx-1 h-4 w-24 animate-pulse rounded-full bg-muted" />
-          <div className="divide-y rounded-3xl border">
+          <div className="mx-1 h-4 w-24 animate-pulse rounded-full bg-muted md:mx-2 md:h-3 md:w-16" />
+          <div className="divide-y rounded-3xl border md:divide-y-0 md:rounded-none md:border-0">
             {Array.from({ length: rows }, (_, row) => (
-              <div key={row} className="flex h-16 items-center gap-3 px-4">
+              <div key={row} className="flex h-16 items-center gap-3 px-4 md:h-14 md:px-2">
                 <div className="size-10 animate-pulse rounded-full bg-muted" />
                 <div className="h-4 w-32 animate-pulse rounded-full bg-muted" />
               </div>

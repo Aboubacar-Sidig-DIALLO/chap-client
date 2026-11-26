@@ -12,12 +12,10 @@ import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { Section } from "@/features/social/components/section"
 import { authClient } from "@/lib/auth-client"
+import { PAGE_ENTRANCE } from "@/lib/motion"
 import { DeleteAccountDialog } from "./delete-account-dialog"
 import { EmailForm } from "./email-form"
 import { NameForm } from "./name-form"
-
-/** Réglages d'entrée d'Animate UI (`recipes/page.md`), comme l'accueil. */
-const ENTRANCE = { fade: true, blur: { initialBlur: 2 }, slide: { offset: 12 } } as const
 
 /** Profil : son nom, son adresse email, la déconnexion et la suppression du compte. */
 export function ProfileScreen({ user }: { user: SessionUser }) {
@@ -36,7 +34,7 @@ export function ProfileScreen({ user }: { user: SessionUser }) {
         <h1 className="text-lg font-semibold">Profil</h1>
       </header>
 
-      <Effect {...ENTRANCE} className="flex flex-col gap-6">
+      <Effect {...PAGE_ENTRANCE} className="flex flex-col gap-6">
         {/* Identité : ce que voient vos amis (jamais votre adresse). */}
         <div className="flex flex-col items-center gap-3 text-center">
           {/* Même avatar que l'accueil, en grand. */}

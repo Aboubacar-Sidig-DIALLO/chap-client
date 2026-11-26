@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { conversationKey, type GroupSummary, type PublicUser } from "../types"
-import { CreateGroupDialog } from "./create-group-dialog"
+import { CreateGroupDialog, type DialogState } from "./create-group-dialog"
 import { ListRow, REVEAL_ON_HOVER } from "./list-row"
 import { JoinCallLink, OngoingCallLabel } from "./ongoing-call"
 import { Section, SectionEmpty, SectionList } from "./section"
@@ -33,6 +33,7 @@ interface GroupsSectionProps {
   unreadCount: (key: string) => number
   /** Conversation ouverte à l'écran (voir `conversationKey`). */
   activeKey: string | null
+  createGroupDialog: DialogState
 }
 
 /** Avatars superposés des premiers membres. */
@@ -58,12 +59,13 @@ export function GroupsSection({
   onLeave,
   unreadCount,
   activeKey,
+  createGroupDialog,
 }: GroupsSectionProps) {
   return (
     <Section
       title="Groupes"
       count={groups.length}
-      action={<CreateGroupDialog friends={friends} onCreate={onCreate} />}
+      action={<CreateGroupDialog {...createGroupDialog} friends={friends} onCreate={onCreate} />}
     >
       {groups.length === 0 ? (
         <SectionEmpty

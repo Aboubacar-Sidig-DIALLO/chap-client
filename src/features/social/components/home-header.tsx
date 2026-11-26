@@ -1,16 +1,11 @@
 "use client"
 
-import { ConfirmDialog } from "@/components/confirm-dialog"
+import Link from "next/link"
 import type { SessionUser } from "@/features/auth/components/session-gate"
+import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
-import { authClient } from "@/lib/auth-client"
-import { Logout01Icon } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
-
-/** Bonjour le matin et l'après-midi, bonsoir à partir de 18 h. */
-function greeting() {
-  return new Date().getHours() >= 18 ? "Bonsoir" : "Bonjour"
-}
+import { greetingFor } from "../lib/greeting"
+import { SignOutButton } from "./sign-out-button"
 
 interface HomeHeaderProps {
   user: SessionUser
@@ -18,33 +13,23 @@ interface HomeHeaderProps {
   isPageTitle: boolean
 }
 
-/** En-tête de l'accueil : salutation personnalisée, avatar et déconnexion. */
+/**
+ * En-tête de l'accueil sur mobile : salutation, avatar (vers le profil) et déconnexion.
+ * Sur grand écran, la marque, la barre de compte et le panneau de bienvenue le remplacent.
+ */
 export function HomeHeader({ user, isPageTitle }: HomeHeaderProps) {
-  const firstName = user.name.split(" ")[0]
   const Title = isPageTitle ? "h1" : "p"
 
   return (
-    <header className="flex items-center gap-3 md:px-1">
-      <UserAvatar
-        user={{ id: user.id, name: user.name, avatarUrl: user.image ?? undefined }}
-        size="lg"
-      />
+    <header className="flex items-center gap-3 md:hidden">
+      <Link href={ROUTES.profile} aria-label="Mon profil" className="press rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
+        <UserAvatar user={{ id: user.id, name: user.name, avatarUrl: user.image ?? undefined }} size="lg" />
+      </Link>
       <div className="min-w-0 flex-1">
-        <Title className="truncate text-2xl font-semibold tracking-tight md:text-lg">
-          {greeting()}, {firstName}
-        </Title>
-        <p className="truncate text-sm text-muted-foreground md:text-xs">
-          Avec qui voulez-vous parler aujourd&apos;hui ?
-        </p>
+        <Title className="truncate text-2xl font-semibold tracking-tight">{greetingFor(user.name)}</Title>
+        <p className="truncate text-sm text-muted-foreground">Avec qui voulez-vous parler aujourd&apos;hui ?</p>
       </div>
-      <ConfirmDialog
-        trigger={<HugeiconsIcon icon={Logout01Icon} size={20} strokeWidth={2} />}
-        triggerLabel="Se déconnecter"
-        title="Se déconnecter ?"
-        description="Vous pourrez vous reconnecter à tout moment avec votre adresse email."
-        confirmLabel="Se déconnecter"
-        onConfirm={() => void authClient.signOut()}
-      />
+      <SignOutButton />
     </header>
   )
 }

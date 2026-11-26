@@ -13,7 +13,13 @@ import { cn } from "@/lib/utils"
 import { GROUP_MAX_MEMBERS, GROUP_NAME_MAX_LENGTH } from "../lib/config"
 import type { PublicUser } from "../types"
 
-interface CreateGroupDialogProps {
+/** Ouverture d'une fenêtre, tenue par le parent. */
+export interface DialogState {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+interface CreateGroupFormProps {
   friends: PublicUser[]
   onCreate: (input: { name: string; memberIds: string[] }) => Promise<unknown>
 }
@@ -21,13 +27,12 @@ interface CreateGroupDialogProps {
 /**
  * Création d'un groupe : un nom, des amis cochés, c'est fait.
  * Feuille ancrée en bas sur mobile, fenêtre centrée sur grand écran.
+ * L'ouverture est pilotée par le parent : elle peut aussi venir du panneau de bienvenue.
  */
-export function CreateGroupDialog({ friends, onCreate }: CreateGroupDialogProps) {
-  const [open, setOpen] = useState(false)
-
+export function CreateGroupDialog({ open, onOpenChange, friends, onCreate }: DialogState & CreateGroupFormProps) {
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger className={buttonVariants({ variant: "ghost", size: "sm", className: "h-9 text-voice" })}>
+    <Dialog.Root open={open} onOpenChange={(next) => onOpenChange(next)}>
+      <Dialog.Trigger className={buttonVariants({ variant: "ghost", size: "sm", className: "h-9 text-voice md:h-8" })}>
         <HugeiconsIcon icon={Add01Icon} strokeWidth={2} data-icon="inline-start" />
         Nouveau groupe
       </Dialog.Trigger>
@@ -53,7 +58,7 @@ export function CreateGroupDialog({ friends, onCreate }: CreateGroupDialogProps)
 
           {friends.length > 0 ? (
             // Remonté à chaque ouverture : le formulaire repart de zéro.
-            <CreateGroupForm friends={friends} onCreate={onCreate} onDone={() => setOpen(false)} />
+            <CreateGroupForm friends={friends} onCreate={onCreate} onDone={() => onOpenChange(false)} />
           ) : (
             <Dialog.Close className={buttonVariants({ variant: "outline", size: "lg", className: "h-11" })}>
               Compris
@@ -69,7 +74,7 @@ function CreateGroupForm({
   friends,
   onCreate,
   onDone,
-}: CreateGroupDialogProps & { onDone: () => void }) {
+}: CreateGroupFormProps & { onDone: () => void }) {
   const [name, setName] = useState("")
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set())
   const [error, setError] = useState<string | null>(null)

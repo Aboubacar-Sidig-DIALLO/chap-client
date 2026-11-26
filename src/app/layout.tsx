@@ -2,16 +2,17 @@ import type { Metadata, Viewport } from "next"
 import { Figtree } from "next/font/google"
 import { SessionEndedListener } from "@/features/auth/components/session-ended-listener"
 import { IncomingCallNotifier } from "@/features/social/components/incoming-call"
+import { APP_NAME } from "@/lib/config"
 import "./globals.css"
 
 const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" })
 
 export const metadata: Metadata = {
-  title: "Chat",
+  title: APP_NAME,
   description: "Messagerie instantanée",
-  applicationName: "Chat",
+  applicationName: APP_NAME,
   // Ajout à l'écran d'accueil iOS : lancement plein écran, comme une app native.
-  appleWebApp: { capable: true, title: "Chat", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "default" },
   formatDetection: { telephone: false },
 }
 

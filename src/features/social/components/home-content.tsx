@@ -3,15 +3,14 @@
 import { Effect } from "@animate-ui/react/primitives/effects/effect"
 import { Button } from "@/components/ui/button"
 import type { SessionUser } from "@/features/auth/components/session-gate"
+import { PAGE_ENTRANCE } from "@/lib/motion"
 import type { useSocial } from "../hooks/use-social"
 import type { useUserSearch } from "../hooks/use-user-search"
+import type { DialogState } from "./create-group-dialog"
 import { FriendsSection } from "./friends-section"
 import { GroupsSection } from "./groups-section"
 import { LoadError, SectionsSkeleton } from "./load-states"
 import { SearchResults } from "./search-results"
-
-/** Réglages d'entrée d'Animate UI (`recipes/page.md`). */
-const ENTRANCE = { fade: true, blur: { initialBlur: 2 }, slide: { offset: 12 } } as const
 
 interface HomeContentProps {
   user: SessionUser
@@ -22,10 +21,22 @@ interface HomeContentProps {
   onAdd: (userId: string) => Promise<unknown>
   onRemove: (userId: string) => Promise<unknown>
   onFindFriends: () => void
+  /** Fenêtre « Nouveau groupe », ouvrable aussi depuis le panneau de bienvenue. */
+  createGroupDialog: DialogState
 }
 
 /** Sous la recherche : ses résultats dès qu'on tape un nom, sinon amis et groupes. */
-export function HomeContent({ user, activeKey, searchInput, search, social, onAdd, onRemove, onFindFriends }: HomeContentProps) {
+export function HomeContent({
+  user,
+  activeKey,
+  searchInput,
+  search,
+  social,
+  onAdd,
+  onRemove,
+  onFindFriends,
+  createGroupDialog,
+}: HomeContentProps) {
   if (search.isActive) {
     return (
       <SearchResults
@@ -49,7 +60,7 @@ export function HomeContent({ user, activeKey, searchInput, search, social, onAd
   }
 
   return (
-    <Effect {...ENTRANCE} className="flex flex-col gap-6 md:gap-5">
+    <Effect {...PAGE_ENTRANCE} className="flex flex-col gap-6 md:gap-5">
       {/* Échec d'une action, les listes restent affichées. */}
       {social.error && (
         <div
@@ -79,6 +90,7 @@ export function HomeContent({ user, activeKey, searchInput, search, social, onAd
         onLeave={social.leaveGroup}
         unreadCount={social.unreadCount}
         activeKey={activeKey}
+        createGroupDialog={createGroupDialog}
       />
     </Effect>
   )
