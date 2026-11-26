@@ -25,7 +25,13 @@ function getActivityLabel(activeUsers: ActiveUser[], isRecording: boolean) {
  * Ce que font les autres participants. L'enregistrement d'un vocal prime :
  * c'est l'activité principale d'un chat pensé pour la voix.
  */
-export function TypingIndicator({ activeUsers }: { activeUsers: ActiveUser[] }) {
+interface TypingIndicatorProps {
+  activeUsers: ActiveUser[]
+  /** Avatar de celui qui écrit (groupe) ; inutile à deux, comme sur les messages. */
+  showAuthor: boolean
+}
+
+export function TypingIndicator({ activeUsers, showAuthor }: TypingIndicatorProps) {
   if (activeUsers.length === 0) return null
 
   const recording = activeUsers.find((item) => item.activity === "recording")
@@ -35,9 +41,11 @@ export function TypingIndicator({ activeUsers }: { activeUsers: ActiveUser[] }) 
 
   return (
     <Message align="start">
-      <MessageAvatar>
-        <UserAvatar user={featured.user} />
-      </MessageAvatar>
+      {showAuthor && (
+        <MessageAvatar>
+          <UserAvatar user={featured.user} />
+        </MessageAvatar>
+      )}
 
       <MessageContent className="gap-1">
         <div

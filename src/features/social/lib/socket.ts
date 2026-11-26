@@ -1,8 +1,8 @@
 import { io, type Socket } from "socket.io-client"
 import { API_URL } from "@/lib/config"
-import type { SocialServerEvents } from "../types"
+import type { SocialClientEvents, SocialServerEvents } from "../types"
 
-export type SocialSocket = Socket<SocialServerEvents, Record<string, never>>
+export type SocialSocket = Socket<SocialServerEvents, SocialClientEvents>
 
 let shared: SocialSocket | null = null
 let users = 0
@@ -27,4 +27,9 @@ export function releaseSocialSocket() {
     shared.disconnect()
     shared = null
   }
+}
+
+/** Refuse l'appel d'un ami (depuis la sonnerie) : il s'arrête aussi chez lui. */
+export function declineFriendCall(friendId: string) {
+  shared?.emit("call:decline", { userId: friendId })
 }

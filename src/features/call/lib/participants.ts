@@ -1,12 +1,19 @@
 import type { CallSnapshot } from "./call-session"
 import type { CallParticipant } from "../types"
 
-/** Début du direct : l'arrivée du premier participant encore présent. */
-export function getLiveSince(participants: CallParticipant[]): string | null {
-  if (participants.length === 0) return null
-  return participants.reduce((earliest, participant) =>
-    participant.joinedAt < earliest.joinedAt ? participant : earliest
-  ).joinedAt
+/**
+ * Départ du chronomètre. Direct de groupe : l'arrivée du premier participant
+ * encore présent. Appel entre amis : la réponse (`null` tant que ça sonne).
+ */
+export function getLiveSince(participants: CallParticipant[], isDirect: boolean): string | null {
+  if (participants.length === 0 || (isDirect && participants.length < 2)) return null
+  const joinedAt = participants.map((participant) => participant.joinedAt).sort()
+  return isDirect ? joinedAt[joinedAt.length - 1] : joinedAt[0]
+}
+
+/** Appel entre amis lancé, en attente de la réponse de l'autre. */
+export function isRinging(participants: CallParticipant[], isDirect: boolean) {
+  return isDirect && participants.length === 1
 }
 
 /** Vous d'abord, puis les autres par ordre d'arrivée. */

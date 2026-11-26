@@ -16,6 +16,7 @@ import type {
   ServerMessage,
   UserActivity,
 } from "../types"
+import type { PresenceChange } from "@/features/social/types"
 import { API_URL, type ReactionEmoji } from "./config"
 
 export type SendMessageAck =
@@ -32,7 +33,10 @@ interface ServerToClientEvents {
   "session:ended": () => void
   "chat:history": (messages: ServerMessage[]) => void
   "message:new": (message: ServerMessage) => void
+  /** Groupe : qui a la conversation ouverte en ce moment. */
   "users:online": (users: ChatUser[]) => void
+  /** Conversation privée : présence de l'ami dans l'application, à l'ouverture puis à chaque changement. */
+  "friend:presence": (presence: PresenceChange) => void
   /** Tous les accusés à la connexion, puis uniquement ceux qui changent. */
   "receipts:update": (receipts: ReadReceipt[]) => void
   /** Un participant écrit, enregistre un vocal, ou s'arrête (`null`). */
@@ -45,8 +49,10 @@ interface ServerToClientEvents {
   "voice:progress": (event: { messageId: string } & ListenProgress) => void
   /** Les réactions d'un message ont changé. */
   "message:reactions": (event: { messageId: string; reactions: Reaction[] }) => void
-  /** Participants du direct, à la connexion puis à chaque changement. */
+  /** Participants de l'appel, à la connexion puis à chaque changement. */
   "call:participants": (participants: CallParticipant[]) => void
+  /** Appel entre amis terminé par l'autre (raccroché, refusé, sans réponse). */
+  "call:ended": () => void
   /** Message WebRTC d'un autre participant (`peerId` : l'expéditeur). */
   "call:signal": (signal: CallSignal) => void
   /** Réaction envoyée pendant le direct. */
@@ -69,7 +75,10 @@ interface ClientToServerEvents {
   "message:react": (payload: { messageId: string; emoji: ReactionEmoji | null }) => void
   /** Rejoint le direct ; la réponse liste les participants à qui se connecter. */
   "call:join": (media: CallMedia, ack: (response: CallJoinAck) => void) => void
+  /** Quitte le direct ; entre amis, raccroche (l'appel prend fin pour les deux). */
   "call:leave": () => void
+  /** Refuse l'appel d'un ami qui sonne. */
+  "call:decline": () => void
   /** Micro coupé ou rétabli, caméra allumée ou éteinte. */
   "call:media": (media: CallMedia) => void
   /** Message WebRTC pour un autre participant (`peerId` : le destinataire). */

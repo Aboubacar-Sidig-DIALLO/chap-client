@@ -33,6 +33,8 @@ import { UserAvatar } from "./user-avatar"
 interface ChatMessageGroupProps {
   run: MessageRun
   isOwn: boolean
+  /** Nom et avatar des messages reçus (groupe) ; inutiles à deux. */
+  showAuthor: boolean
   receipts: ReadReceipt[]
   /** Messages déjà là au chargement (affichés sans animation) ; `null` : historique pas encore reçu. */
   historyIds: ReadonlySet<string> | null
@@ -43,10 +45,11 @@ interface ChatMessageGroupProps {
   onReact: (message: ChatMessage, emoji: ReactionEmoji) => void
 }
 
-/** Messages consécutifs d'un même auteur : un seul avatar et un seul horodatage. */
+/** Messages consécutifs d'un même auteur : un seul avatar (en groupe) et un seul horodatage. */
 export function ChatMessageGroup({
   run,
   isOwn,
+  showAuthor,
   receipts,
   historyIds,
   showReceiptLabel = false,
@@ -58,7 +61,7 @@ export function ChatMessageGroup({
 
   return (
     <Message align={isOwn ? "end" : "start"}>
-      {!isOwn && (
+      {!isOwn && showAuthor && (
         // Aligne l'avatar sur la dernière bulle (au-dessus du footer).
         <MessageAvatar className="group-has-data-[slot=message-footer]/message:-translate-y-5">
           <UserAvatar user={run.author} />
@@ -66,7 +69,7 @@ export function ChatMessageGroup({
       )}
 
       <MessageContent className="gap-1">
-        {!isOwn && <MessageHeader>{run.author.name}</MessageHeader>}
+        {!isOwn && showAuthor && <MessageHeader>{run.author.name}</MessageHeader>}
 
         {run.messages.map((message, index) => (
           <MessageItem

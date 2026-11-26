@@ -33,6 +33,8 @@ interface MessageListProps {
   /** `false` tant que le premier historique n'est pas arrivé. */
   isHistoryLoaded: boolean
   currentUserId: string
+  /** Conversation à deux : on sait qui écrit, ni nom ni avatar sur les messages reçus. */
+  isDirect: boolean
   activeUsers: ActiveUser[]
   receipts: ReadReceipt[]
   unreadCount: number
@@ -48,6 +50,7 @@ export function MessageList({
   messages,
   isHistoryLoaded,
   currentUserId,
+  isDirect,
   activeUsers,
   receipts,
   unreadCount,
@@ -136,6 +139,7 @@ export function MessageList({
                               key={first.id}
                               run={run}
                               isOwn={run.author.id === currentUserId}
+                              showAuthor={!isDirect}
                               receipts={receipts}
                               historyIds={historyIds}
                               showReceiptLabel={
@@ -162,7 +166,7 @@ export function MessageList({
                     exit={{ opacity: 0, transition: fade }}
                     className="mt-4"
                   >
-                    <TypingIndicator activeUsers={activeUsers} />
+                    <TypingIndicator activeUsers={activeUsers} showAuthor={!isDirect} />
                   </motion.div>
                 )}
               </AnimatePresence>

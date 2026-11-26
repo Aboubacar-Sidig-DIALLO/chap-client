@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent } from "react"
 import Link from "next/link"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
-import { HeadsetIcon } from "@hugeicons/core-free-icons"
+import { CallEnd01Icon, HeadsetIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { playSound } from "@/components/ui-sounds"
@@ -13,6 +13,7 @@ import { getInitials } from "@/features/chat/lib/format"
 import { authClient } from "@/lib/auth-client"
 import { type IncomingCall, useIncomingCall } from "../hooks/use-incoming-call"
 import { conversationHref } from "../lib/conversation"
+import { declineFriendCall } from "../lib/socket"
 
 /** La sonnerie se répète à ce rythme… */
 const RING_INTERVAL_MS = 2500
@@ -73,6 +74,13 @@ function Ringing({ call, onDismiss }: { call: IncomingCall; onDismiss: () => voi
   }, [call.id])
 
   const firstName = startedBy.name.split(" ")[0]
+  const isDirect = conversation.type === "direct"
+
+  // Entre amis, refuser arrête l'appel chez lui aussi ; en groupe, on ignore simplement le direct.
+  function decline() {
+    if (conversation.type === "direct") declineFriendCall(conversation.userId)
+    onDismiss()
+  }
 
   return (
     <div className="flex items-center gap-3 rounded-3xl border bg-background/95 p-2.5 pl-3 shadow-xl backdrop-blur-lg">
@@ -82,15 +90,27 @@ function Ringing({ call, onDismiss }: { call: IncomingCall; onDismiss: () => voi
       <p className="min-w-0 flex-1 text-sm">
         <span className="block truncate">
           <strong className="font-semibold">{firstName}</strong>
-          {conversation.type === "direct" ? " vous appelle" : " lance un appel"}
+          {isDirect ? " vous appelle" : " lance un appel"}
         </span>
         {conversation.type === "group" && (
           <span className="block truncate text-xs text-muted-foreground">dans « {conversation.groupName} »</span>
         )}
       </p>
-      <Button variant="ghost" size="sm" onClick={onDismiss} className="h-9 shrink-0 rounded-full px-3 text-muted-foreground">
-        Ignorer
-      </Button>
+      {isDirect ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={decline}
+          className="h-9 shrink-0 gap-1.5 rounded-full px-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
+          <HugeiconsIcon icon={CallEnd01Icon} size={16} strokeWidth={2} aria-hidden />
+          Refuser
+        </Button>
+      ) : (
+        <Button variant="ghost" size="sm" onClick={onDismiss} className="h-9 shrink-0 rounded-full px-3 text-muted-foreground">
+          Ignorer
+        </Button>
+      )}
       <Link
         href={joinCallHref(conversationHref(conversation))}
         onClick={onDismiss}
@@ -100,7 +120,7 @@ function Ringing({ call, onDismiss }: { call: IncomingCall; onDismiss: () => voi
         })}
       >
         <HugeiconsIcon icon={HeadsetIcon} size={16} strokeWidth={2} aria-hidden />
-        Rejoindre
+        {isDirect ? "Répondre" : "Rejoindre"}
       </Link>
     </div>
   )

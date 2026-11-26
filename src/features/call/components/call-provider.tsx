@@ -7,12 +7,21 @@ import { CallSession, type CallSnapshot } from "../lib/call-session"
 interface CallContextValue {
   call: CallSnapshot
   session: CallSession
+  /**
+   * Appel entre deux amis : il sonne chez l'autre, qui répond ou refuse, et
+   * prend fin pour les deux dès que l'un raccroche. Sinon, direct de groupe
+   * ouvert, que chacun rejoint ou quitte librement.
+   */
+  isDirect: boolean
+  /** Nom de l'ami ou du groupe. */
+  title: string
+  currentUserId: string
   /** Vous êtes dans le direct (ou en train d'y entrer). */
   isInCall: boolean
   /** Scène plein écran ; sinon, mini-direct flottant au-dessus de la conversation. */
   isExpanded: boolean
   setIsExpanded: (expanded: boolean) => void
-  /** Entre dans le direct (ou le lance) et ouvre la scène. */
+  /** Lance l'appel, y répond ou entre dans le direct, et ouvre la scène. */
   join: () => void
 }
 
@@ -27,11 +36,14 @@ export function useCall() {
 interface CallProviderProps {
   /** La connexion du chat, qui porte aussi la signalisation du direct. */
   socket: ChatSocket
+  isDirect: boolean
+  title: string
+  currentUserId: string
   children: React.ReactNode
 }
 
-/** Le direct de la conversation, pour toute la page (en-tête, scène, mini-direct). */
-export function CallProvider({ socket, children }: CallProviderProps) {
+/** L'appel de la conversation, pour toute la page (en-tête, scène, mini-appel). */
+export function CallProvider({ socket, isDirect, title, currentUserId, children }: CallProviderProps) {
   const [session] = useState(() => new CallSession(socket))
   const [isExpanded, setIsExpanded] = useState(true)
   const call = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getServerSnapshot)
@@ -48,6 +60,9 @@ export function CallProvider({ socket, children }: CallProviderProps) {
       value={{
         call,
         session,
+        isDirect,
+        title,
+        currentUserId,
         isInCall: call.status !== "idle",
         isExpanded,
         setIsExpanded,

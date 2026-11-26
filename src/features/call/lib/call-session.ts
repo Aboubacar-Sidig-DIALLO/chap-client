@@ -125,6 +125,8 @@ export class CallSession {
       "call:participants": this.handleParticipants,
       "call:signal": this.handleSignal,
       "call:reaction": this.handleReaction,
+      // Entre amis, l'autre a raccroché ou refusé, ou personne n'a répondu.
+      "call:ended": () => this.reset(null),
       // Le serveur nous a retiré du direct : on libère micro et caméra.
       disconnect: () => {
         if (this.snapshot.status !== "idle") {
@@ -181,6 +183,11 @@ export class CallSession {
     if (this.snapshot.status === "idle") return
     this.socket.emit("call:leave")
     this.reset(null)
+  }
+
+  /** Refuse l'appel d'un ami qui sonne : il s'arrête aussi chez lui. */
+  decline = () => {
+    if (this.snapshot.status === "idle") this.socket.emit("call:decline")
   }
 
   toggleMute = () => {

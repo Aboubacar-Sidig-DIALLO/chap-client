@@ -7,7 +7,7 @@ import { ROUTES } from "@/features/auth/lib/routes"
 import { formatPresence } from "../lib/presence"
 import type { Friend } from "../types"
 import { REVEAL_ON_HOVER } from "./list-row"
-import { JoinCallLink, OngoingCallLabel } from "./ongoing-call"
+import { FriendCallLabel, JoinCallLink } from "./ongoing-call"
 import { PersonRow } from "./person-row"
 
 interface FriendRowProps {
@@ -20,9 +20,13 @@ interface FriendRowProps {
   onRemove: (userId: string) => Promise<unknown>
 }
 
-/** Un ami : sa présence ou son appel en cours, la conversation en un clic. */
+/**
+ * Un ami : sa présence ou votre appel en cours, la conversation en un clic.
+ * Un appel entre amis n'existe sans vous que s'il vous appelle : « Répondre ».
+ */
 export function FriendRow({ friend, currentUserId, now, isActive, unreadCount, onRemove }: FriendRowProps) {
-  const canJoinCall = friend.call && !friend.call.participants.some((participant) => participant.id === currentUserId)
+  const isIncomingCall =
+    friend.call !== null && !friend.call.participants.some((participant) => participant.id === currentUserId)
 
   return (
     <PersonRow
@@ -32,7 +36,7 @@ export function FriendRow({ friend, currentUserId, now, isActive, unreadCount, o
       presence={friend.presence}
       description={
         friend.call ? (
-          <OngoingCallLabel call={friend.call} />
+          <FriendCallLabel call={friend.call} isIncoming={isIncomingCall} />
         ) : (
           <span className={friend.presence.online ? "text-emerald-600 dark:text-emerald-400" : undefined}>
             {formatPresence(friend.presence, now)}
@@ -42,7 +46,11 @@ export function FriendRow({ friend, currentUserId, now, isActive, unreadCount, o
       unreadCount={unreadCount}
       actions={
         <>
-          {canJoinCall && <JoinCallLink href={ROUTES.friend(friend.id)} label={`Rejoindre l'appel de ${friend.name}`} />}
+          {isIncomingCall && (
+            <JoinCallLink href={ROUTES.friend(friend.id)} label={`Répondre à l'appel de ${friend.name}`}>
+              Répondre
+            </JoinCallLink>
+          )}
           <ConfirmDialog
             trigger={<HugeiconsIcon icon={UserRemove01Icon} size={18} strokeWidth={2} />}
             triggerLabel={`Retirer ${friend.name} de vos amis`}

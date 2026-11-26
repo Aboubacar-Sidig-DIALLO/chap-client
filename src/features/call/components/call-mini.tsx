@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { VoiceHalo } from "@/features/chat/components/voice-halo"
 import { getInitials } from "@/features/chat/lib/format"
 import { useElapsed } from "../hooks/use-elapsed"
-import { getLiveSince, orderParticipants } from "../lib/participants"
+import { getLiveSince, isRinging, orderParticipants } from "../lib/participants"
 import { useCall } from "./call-provider"
 import { LiveDot } from "./live-dot"
 
@@ -21,7 +21,7 @@ const MAX_ORBS = 3
  * un coin ou on le range contre un bord.
  */
 export function CallMini() {
-  const { call, isInCall, isExpanded } = useCall()
+  const { call, isDirect, isInCall, isExpanded } = useCall()
   const fade = useTempoTransition(transition.fade)
 
   return (
@@ -39,7 +39,7 @@ export function CallMini() {
             defaultCorner="top-left"
             margin={12}
             storageKey="chat:call-mini"
-            label="Direct en cours"
+            label={isDirect ? "Appel en cours" : "Direct en cours"}
             live={call.status === "joined"}
             edgePeek={<LiveDot className="size-2.5" />}
           >
@@ -52,8 +52,10 @@ export function CallMini() {
 }
 
 function MiniCard() {
-  const { call, session, setIsExpanded } = useCall()
-  const elapsed = useElapsed(getLiveSince(call.participants))
+  const { call, session, isDirect, title, setIsExpanded } = useCall()
+  const elapsed = useElapsed(getLiveSince(call.participants, isDirect))
+  const status = isRinging(call.participants, isDirect) ? "Ça sonne…" : elapsed
+  const noun = isDirect ? "l'appel" : "le direct"
   const participants = orderParticipants(call.participants, call.selfId)
   const hiddenCount = participants.length - MAX_ORBS
 
@@ -62,7 +64,7 @@ function MiniCard() {
       <button
         type="button"
         onClick={() => setIsExpanded(true)}
-        aria-label="Ouvrir le direct"
+        aria-label={`Ouvrir ${noun}`}
         className="flex items-center gap-2 rounded-full pr-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <span aria-hidden className="flex -space-x-2 py-1 pl-1">
@@ -85,9 +87,9 @@ function MiniCard() {
         </span>
         <span className="text-left leading-tight">
           <span className="flex items-center gap-1.5 text-sm font-medium">
-            <LiveDot /> Direct
+            <LiveDot /> <span className="max-w-32 truncate">{isDirect ? title : "Direct"}</span>
           </span>
-          <span className="block text-xs text-muted-foreground tabular-nums">{elapsed}</span>
+          <span className="block text-xs text-muted-foreground tabular-nums">{status}</span>
         </span>
       </button>
 
@@ -106,7 +108,7 @@ function MiniCard() {
       <Button
         variant="ghost"
         size="icon-sm"
-        aria-label="Ouvrir le direct en grand"
+        aria-label={`Ouvrir ${noun} en grand`}
         onClick={() => setIsExpanded(true)}
         className="hidden size-9 sm:grid"
       >
@@ -114,7 +116,7 @@ function MiniCard() {
       </Button>
       <Button
         size="icon-sm"
-        aria-label="Quitter le direct"
+        aria-label={isDirect ? "Raccrocher" : "Quitter le direct"}
         onClick={session.leave}
         className="size-9 bg-destructive text-white hover:bg-destructive/90"
       >

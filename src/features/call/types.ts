@@ -22,11 +22,14 @@ export interface CallSummary {
   /** Dates ISO 8601. */
   startedAt: string
   endedAt: string
+  /** Groupe : durée du direct. Entre amis : temps de conversation depuis la réponse (0 sans réponse). */
   durationMs: number
   /** Tous ceux qui y sont passés, par ordre d'arrivée (le premier l'a lancé). */
   participants: ChatUser[]
   /** Au moins une caméra s'est allumée. */
   hadVideo: boolean
+  /** Entre amis : l'appel a été refusé par celui qu'on appelait. */
+  declined: boolean
 }
 
 /** Message WebRTC échangé entre deux participants, via le serveur. */

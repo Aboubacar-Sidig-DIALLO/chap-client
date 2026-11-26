@@ -19,11 +19,11 @@ const ROUND_KEY =
  * réactions, et sortie.
  */
 export function CallControls() {
-  const { call, session } = useCall()
+  const { call, session, isDirect } = useCall()
   const isJoined = call.status === "joined"
 
   return (
-    <div role="toolbar" aria-label="Commandes du direct" className="flex items-start justify-center gap-5 sm:gap-7">
+    <div role="toolbar" aria-label={isDirect ? "Commandes de l'appel" : "Commandes du direct"} className="flex items-start justify-center gap-5 sm:gap-7">
       <ControlItem label={call.isMuted ? "Micro coupé" : "Micro"}>
         <button
           type="button"
@@ -75,10 +75,10 @@ export function CallControls() {
         </Popover>
       </ControlItem>
 
-      <ControlItem label="Quitter">
+      <ControlItem label={isDirect ? "Raccrocher" : "Quitter"}>
         <button
           type="button"
-          aria-label="Quitter le direct"
+          aria-label={isDirect ? "Raccrocher" : "Quitter le direct"}
           onClick={session.leave}
           className={cn(ROUND_KEY, "bg-destructive text-white shadow-md shadow-destructive/30")}
         >

@@ -54,6 +54,7 @@ export function ChatRoom({
     unreadCount,
     latestIncomingSeq,
     onlineUsers,
+    friendPresence,
     activeUsers,
     liveListeners,
     connectionStatus,
@@ -74,10 +75,16 @@ export function ChatRoom({
   if (unavailableReason) return <ConversationUnavailable reason={unavailableReason} />
 
   const title = conversationInfo?.title ?? PENDING_TITLE[conversation.type]
+  const isDirect = conversation.type === "direct"
+  // Entre amis : l'ami et sa présence ; en groupe : qui est là.
+  const audience =
+    conversation.type === "direct"
+      ? { type: "direct" as const, friend: { id: conversation.userId, name: title }, friendPresence }
+      : { type: "group" as const, onlineUsers }
 
   return (
-    // Le direct (appel audio / vidéo) partage la connexion du chat.
-    <CallProvider socket={socket}>
+    // L'appel (audio / vidéo) partage la connexion du chat.
+    <CallProvider socket={socket} isDirect={isDirect} title={title} currentUserId={currentUser.id}>
       {autoJoinCall && <AutoJoinCall onHandled={onAutoJoinHandled} />}
       {/* L'écoute est coordonnée pour toute la conversation (un vocal à la fois, enchaînement). */}
       <VoicePlaybackProvider
@@ -96,8 +103,8 @@ export function ChatRoom({
           className="fixed inset-x-0 top-(--viewport-offset-top) flex h-(--viewport-height) w-full flex-col overflow-hidden bg-background md:relative md:inset-auto md:h-full md:flex-1"
         >
           <ChatHeader
+            {...audience}
             title={title}
-            onlineUsers={onlineUsers}
             connectionStatus={connectionStatus}
             actions={<LiveButton disabled={connectionStatus !== "connected"} />}
           />
@@ -111,6 +118,7 @@ export function ChatRoom({
               messages={messages}
               isHistoryLoaded={isHistoryLoaded}
               currentUserId={currentUser.id}
+              isDirect={isDirect}
               activeUsers={activeUsers}
               receipts={receipts}
               unreadCount={unreadCount}
@@ -130,8 +138,8 @@ export function ChatRoom({
             attachments={attachments}
           />
 
-          {/* La scène du direct recouvre toute la salle quand elle est ouverte. */}
-          <CallStage title={title} />
+          {/* La scène de l'appel recouvre toute la conversation quand elle est ouverte. */}
+          <CallStage />
         </FileDropZone>
       </VoicePlaybackProvider>
     </CallProvider>

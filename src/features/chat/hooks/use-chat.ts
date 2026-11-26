@@ -12,6 +12,7 @@ import {
   getLatestIncomingSeq,
   mergeReceipts,
 } from "../lib/receipts"
+import type { Presence } from "@/features/social/types"
 import { createChatSocket, listen, type ChatSocket } from "../lib/socket"
 import type {
   ActiveUser,
@@ -75,7 +76,10 @@ export function useChat(
   const [unavailableReason, setUnavailableReason] =
     useState<ConversationUnavailableReason | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  /** Groupe : qui a la conversation ouverte. */
   const [onlineUsers, setOnlineUsers] = useState<ChatUser[]>([])
+  /** Conversation privée : présence de l'ami dans l'application (`null` tant qu'inconnue). */
+  const [friendPresence, setFriendPresence] = useState<Presence | null>(null)
   /** Participants qui écrivent ou enregistrent un vocal. */
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([])
   /** Participants qui écoutent un vocal en ce moment. */
@@ -98,6 +102,7 @@ export function useChat(
   const sentProgressRef = useRef(new Map<string, number>())
 
   const userId = currentUser.id
+  const friendId = conversation.type === "direct" ? conversation.userId : null
   const reportUnauthorized = useEffectEvent(() => onUnauthorized?.())
 
   useEffect(() => {
@@ -190,6 +195,9 @@ export function useChat(
       "receipts:update": (updates) =>
         setReceipts((current) => mergeReceipts(current, updates)),
       "users:online": setOnlineUsers,
+      "friend:presence": ({ userId: changedUserId, online, lastSeenAt }) => {
+        if (changedUserId === friendId) setFriendPresence({ online, lastSeenAt })
+      },
       activity: ({ user, activity }) => {
         if (user.id !== userId) setActivity(user, activity)
       },
@@ -204,7 +212,7 @@ export function useChat(
       socket.io.off("reconnect_attempt", markReconnecting)
       socket.disconnect()
     }
-  }, [socket, userId])
+  }, [socket, userId, friendId])
 
   // Application de l'instant : chaque message disparaît une heure après son envoi.
   useEffect(() => {
@@ -376,6 +384,7 @@ export function useChat(
     /** `seq` du dernier message reçu d'un autre participant. */
     latestIncomingSeq: getLatestIncomingSeq(messages, userId),
     onlineUsers,
+    friendPresence,
     activeUsers,
     liveListeners,
     connectionStatus,
