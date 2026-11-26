@@ -13,6 +13,14 @@ const MESSAGES: Record<string, string> = {
   ACCOUNT_NOT_FOUND: "Aucun compte n'est associé à cette adresse.",
   EMAIL_UNCHANGED: "C'est déjà l'adresse de votre compte.",
   EMAIL_MISMATCH: "Ce n'est pas l'adresse de votre compte.",
+  /** Plugin Admin de Better Auth : compte suspendu par un administrateur. */
+  /** Connexion d'un administrateur : adresse inconnue ou mot de passe faux (sans distinction). */
+  INVALID_EMAIL_OR_PASSWORD: "Adresse ou mot de passe incorrect.",
+  /** Changement de mot de passe : le mot de passe actuel saisi est faux. */
+  INVALID_PASSWORD: "Le mot de passe actuel est incorrect.",
+  PASSWORD_TOO_SHORT: "Ce mot de passe est trop court (12 caractères au moins).",
+  PASSWORD_TOO_LONG: "Ce mot de passe est trop long.",
+  BANNED_USER: "Ce compte a été suspendu. Contactez un administrateur si vous pensez qu'il s'agit d'une erreur.",
 }
 
 export function getAuthErrorMessage(error: AuthError) {

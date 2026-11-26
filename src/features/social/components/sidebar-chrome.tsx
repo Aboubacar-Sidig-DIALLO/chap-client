@@ -1,7 +1,9 @@
 import Link from "next/link"
-import { ArrowRight01Icon, BubbleChatIcon } from "@hugeicons/core-free-icons"
+import { ArrowRight01Icon, BubbleChatIcon, UserShield01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { SessionUser } from "@/features/auth/components/session-gate"
+import { isAdmin } from "@/features/admin/lib/roles"
+import { buttonVariants } from "@/components/ui/button"
 import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { APP_NAME } from "@/lib/config"
@@ -31,7 +33,10 @@ export function SidebarBrand() {
   )
 }
 
-/** Bas de la barre latérale sur grand écran : son compte (vers le profil) et la déconnexion. */
+/**
+ * Bas de la barre latérale sur grand écran : son compte (vers le profil),
+ * l'administration pour un administrateur, et la déconnexion.
+ */
 export function AccountBar({ user }: { user: SessionUser }) {
   return (
     <div className="hidden shrink-0 items-center gap-1 border-t p-2 md:flex">
@@ -49,6 +54,16 @@ export function AccountBar({ user }: { user: SessionUser }) {
           className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/account:opacity-100 group-focus-visible/account:opacity-100"
         />
       </Link>
+      {isAdmin(user) && (
+        <Link
+          href={ROUTES.admin}
+          aria-label="Administration"
+          title="Administration"
+          className={buttonVariants({ variant: "ghost", size: "icon", className: "size-9 shrink-0 text-muted-foreground" })}
+        >
+          <HugeiconsIcon icon={UserShield01Icon} size={18} strokeWidth={2} />
+        </Link>
+      )}
       <SignOutButton />
     </div>
   )

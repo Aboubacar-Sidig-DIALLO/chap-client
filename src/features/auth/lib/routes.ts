@@ -6,6 +6,8 @@ export const ROUTES = {
   home: "/",
   /** Son profil : nom, adresse email, suppression du compte. */
   profile: "/profil",
+  /** Administration des comptes (rôle `admin`). */
+  admin: "/admin",
   /** Conversation privée avec un ami. */
   friend: (userId: string) => `/amis/${encodeURIComponent(userId)}`,
   /** Conversation d'un groupe. */

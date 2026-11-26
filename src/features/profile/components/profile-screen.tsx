@@ -2,11 +2,12 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft01Icon, Logout01Icon } from "@hugeicons/core-free-icons"
+import { ArrowLeft01Icon, ArrowRight01Icon, Logout01Icon, UserShield01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Effect } from "@animate-ui/react/primitives/effects/effect"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { isAdmin } from "@/features/admin/lib/roles"
 import { SessionGate, type SessionUser } from "@/features/auth/components/session-gate"
 import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
@@ -16,6 +17,7 @@ import { PAGE_ENTRANCE } from "@/lib/motion"
 import { DeleteAccountDialog } from "./delete-account-dialog"
 import { EmailForm } from "./email-form"
 import { NameForm } from "./name-form"
+import { PasswordForm } from "./password-form"
 
 /** Profil : son nom, son adresse email, la déconnexion et la suppression du compte. */
 export function ProfileScreen({ user }: { user: SessionUser }) {
@@ -57,8 +59,25 @@ export function ProfileScreen({ user }: { user: SessionUser }) {
           <EmailForm currentEmail={user.email} />
         </Section>
 
+        {/* Seuls les administrateurs ont un mot de passe. */}
+        {isAdmin(user) && (
+          <Section title="Mot de passe">
+            <PasswordForm />
+          </Section>
+        )}
+
         <Section title="Compte">
           <div className="divide-y overflow-hidden rounded-3xl border bg-card">
+            {isAdmin(user) && (
+              <Link
+                href={ROUTES.admin}
+                className={buttonVariants({ variant: "ghost", className: "h-12 w-full justify-start gap-3 rounded-none px-4" })}
+              >
+                <HugeiconsIcon icon={UserShield01Icon} size={18} strokeWidth={2} aria-hidden />
+                <span className="flex-1">Administration</span>
+                <HugeiconsIcon icon={ArrowRight01Icon} size={16} strokeWidth={2} aria-hidden className="text-muted-foreground" />
+              </Link>
+            )}
             <Button
               variant="ghost"
               onClick={() => setIsSigningOut(true)}

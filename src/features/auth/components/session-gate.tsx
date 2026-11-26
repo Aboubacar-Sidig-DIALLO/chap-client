@@ -12,6 +12,8 @@ export interface SessionUser {
   name: string
   email: string
   image?: string | null
+  /** Plugin Admin de Better Auth : `admin` ouvre l'administration. */
+  role?: string | null
 }
 
 /**

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Figtree } from "next/font/google"
+import { ImpersonationBanner } from "@/features/admin/components/impersonation-banner"
 import { SessionEndedListener } from "@/features/auth/components/session-ended-listener"
 import { IncomingCallNotifier } from "@/features/social/components/incoming-call"
 import { APP_NAME } from "@/lib/config"
@@ -33,6 +34,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className={`${figtree.variable} h-full font-sans antialiased`}>
       <body className="flex min-h-full flex-col">
+        {/* Administrateur connecté « en tant que » quelqu'un : toujours visible. */}
+        <ImpersonationBanner />
         {children}
         {/* Les appels des amis et des groupes sonnent sur toutes les pages. */}
         <IncomingCallNotifier />

@@ -1,5 +1,6 @@
-import { createAuthClient } from "better-auth/react"
 import { emailOnlyClient } from "@/features/auth/lib/email-only-client"
+import { adminClient } from "better-auth/client/plugins"
+import { createAuthClient } from "better-auth/react"
 import { API_URL } from "./config"
 
 /**
@@ -8,5 +9,5 @@ import { API_URL } from "./config"
  */
 export const authClient = createAuthClient({
   baseURL: API_URL,
-  plugins: [emailOnlyClient()],
+  plugins: [emailOnlyClient(), adminClient() ],
 })
