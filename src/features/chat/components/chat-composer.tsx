@@ -3,13 +3,14 @@
 import { useRef, useState } from "react"
 import { LockIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, LayoutGroup, motion } from "motion/react"
 import { AnimateIcon } from "@animate-ui/react/icons"
 import { ScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade"
 import {
   blur,
   ReducedMotionConfig,
   scale,
+  spring,
   transition,
   useTempoTransition,
 } from "@animate-ui/react/utils/motion"
@@ -21,7 +22,9 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { AttachmentDrafts } from "../hooks/use-attachment-drafts"
+import { useElementHeight } from "../hooks/use-element-height"
 import { useIsTouchDevice } from "../hooks/use-media-query"
+import { COMPOSER_LAYOUT_IDS } from "../lib/composer-layout"
 import type { Attachment } from "../types"
 import { AttachmentDraftList } from "./attachment-draft-list"
 import { EmojiPickerButton } from "./emoji-picker-button"
@@ -52,6 +55,11 @@ const NO_RESTRICTIONS = { write: null, voice: null }
  * Compositeur « la voix d'abord » : au repos, le dock vocal et son orbe ; le
  * clavier s'ouvre à la demande et rend la main à la voix dès qu'il n'y a plus
  * rien à envoyer.
+ *
+ * Le passage d'un mode à l'autre est une seule transformation, sans saut : la
+ * hauteur suit en douceur, le fond de la barre apparaît en fondu, l'orbe se
+ * rétracte en bouton d'envoi et les boutons de pièce jointe glissent à leur
+ * nouvelle place.
  */
 export function ChatComposer({
   onSend,
@@ -70,7 +78,11 @@ export function ChatComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isTouchDevice = useIsTouchDevice()
+  const [contentRef, contentHeight] = useElementHeight<HTMLDivElement>()
   const swap = useTempoTransition(transition.swap)
+  const fade = useTempoTransition(transition.fade)
+  const resize = useTempoTransition(spring.height)
+  const morph = useTempoTransition(spring.morph)
 
   const hasContent = value.trim().length > 0 || attachments.attachments.length > 0
   const canSend =
@@ -151,21 +163,10 @@ export function ChatComposer({
   // Ni écrit ni vocal : à la place de la saisie, la raison.
   if (!canWrite && !canSendVoice) return <RestrictedComposer notice={restrictions.write} />
 
-  // Fichiers et selfie comptent comme de l'écrit.
+  // Fichiers et selfie comptent comme de l'écrit. Présents dans les deux modes,
+  // ils glissent d'une place à l'autre (même `layoutId`).
   const attachButtons = canWrite && (
-    <>
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        hidden
-        tabIndex={-1}
-        onChange={(event) => {
-          attachments.addFiles(event.target.files ?? [])
-          // Permet de sélectionner à nouveau le même fichier.
-          event.target.value = ""
-        }}
-      />
+    <motion.div layoutId={COMPOSER_LAYOUT_IDS.attachments} transition={morph} className="flex items-center gap-0.5 sm:gap-1">
       <AnimateIcon animateOnHover animateOnTap asChild>
         <Button
           type="button"
@@ -184,7 +185,7 @@ export function ChatComposer({
         disabled={disabled}
         className={cn(ICON_BUTTON_CLASS, "text-muted-foreground")}
       />
-    </>
+    </motion.div>
   )
 
   return (
@@ -193,98 +194,124 @@ export function ChatComposer({
         event.preventDefault()
         submit()
       }}
-      className={cn(
-        "relative px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3 md:px-(--reading-gutter) md:pb-4",
-        // En mode vocal, la barre se fond dans la page : l'orbe flotte au-dessus.
-        view === "voice"
-          ? "bg-linear-to-t from-background via-background to-background/0 pt-3"
-          : "border-t bg-background pt-2 sm:pt-3"
-      )}
+      // En mode vocal, la barre se fond dans la page : l'orbe flotte au-dessus.
+      className="relative isolate bg-linear-to-t from-background via-background to-background/0 px-2 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3 md:px-(--reading-gutter) md:pb-4"
     >
+      {/* Unique, hors des boutons (présents en double le temps d'une transition). */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        hidden
+        tabIndex={-1}
+        onChange={(event) => {
+          attachments.addFiles(event.target.files ?? [])
+          // Permet de sélectionner à nouveau le même fichier.
+          event.target.value = ""
+        }}
+      />
+
       <ReducedMotionConfig>
-        <AnimatePresence mode="popLayout" initial={false}>
-          {view === "voice" ? (
-            <motion.div
-              key="voice"
-              initial={{ opacity: 0, filter: blur.icon }}
-              animate={{ opacity: 1, filter: "blur(0px)", transition: swap }}
-              exit={{ opacity: 0, filter: blur.icon, transition: swap }}
-            >
-              <VoiceDock
-                onSend={onSend}
-                onRecordingChange={onRecordingChange}
-                onOpenKeyboard={canWrite ? () => setIsKeyboardOpen(true) : undefined}
-                leading={attachButtons}
-                disabled={disabled}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="text"
-              initial={{ opacity: 0, filter: blur.icon }}
-              animate={{ opacity: 1, filter: "blur(0px)", transition: swap }}
-              exit={{ opacity: 0, filter: blur.icon, transition: swap }}
-              className="flex flex-col rounded-3xl border bg-input/30 transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
-            >
-              <AttachmentDraftList
-                drafts={attachments.drafts}
-                notice={attachments.notice}
-                onRemove={attachments.removeDraft}
-                onRetry={attachments.retryDraft}
-              />
+        {/* En mode texte, la barre devient pleine et bordée : en fondu, sans saut. */}
+        <motion.div
+          aria-hidden
+          initial={false}
+          animate={{ opacity: view === "text" ? 1 : 0 }}
+          transition={fade}
+          className="absolute inset-0 -z-10 border-t bg-background"
+        />
 
-              <div className="flex items-end gap-0.5 p-1 sm:gap-1 sm:p-1.5">
-                {attachButtons}
-                <EmojiPickerButton
-                  open={isEmojiPickerOpen}
-                  onOpenChange={handleEmojiPickerOpenChange}
-                  onSelect={insertEmoji}
-                  finalFocus={textareaRef}
-                  disabled={disabled}
-                  className={ICON_BUTTON_CLASS}
-                />
+        {/* La hauteur suit le mode affiché (et le texte qui s'allonge), en douceur. */}
+        <motion.div initial={false} animate={{ height: contentHeight ?? "auto" }} transition={resize}>
+          <div ref={contentRef} className="relative">
+            <LayoutGroup id="composer">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {view === "voice" ? (
+                  <motion.div
+                    key="voice"
+                    initial={{ opacity: 0, filter: blur.icon }}
+                    animate={{ opacity: 1, filter: "blur(0px)", transition: swap }}
+                    exit={{ opacity: 0, filter: blur.icon, transition: swap }}
+                  >
+                    <VoiceDock
+                      onSend={onSend}
+                      onRecordingChange={onRecordingChange}
+                      onOpenKeyboard={canWrite ? () => setIsKeyboardOpen(true) : undefined}
+                      leading={attachButtons}
+                      disabled={disabled}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="text"
+                    // Le champ se déploie légèrement depuis le bas, là où était l'orbe.
+                    initial={{ opacity: 0, y: 8, filter: blur.icon }}
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: { ...morph, opacity: swap, filter: swap } }}
+                    exit={{ opacity: 0, filter: blur.icon, transition: swap }}
+                    className="flex flex-col rounded-3xl border bg-input/30 transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
+                  >
+                    <AttachmentDraftList
+                      drafts={attachments.drafts}
+                      notice={attachments.notice}
+                      onRemove={attachments.removeDraft}
+                      onRetry={attachments.retryDraft}
+                    />
 
-                {/* Long message : les bords du champ s'estompent au lieu d'une barre de défilement. */}
-                <ScrollFade asChild size={16} shrink={0} blur={0}>
-                  <Textarea
-                    ref={textareaRef}
-                    value={value}
-                    rows={1}
-                    disabled={disabled}
-                    autoFocus={isKeyboardOpen}
-                    aria-label="Message"
-                    placeholder={disabled ? "Connexion perdue…" : "Message"}
-                    enterKeyHint={isTouchDevice ? "enter" : "send"}
-                    autoCapitalize="sentences"
-                    onChange={(event) => {
-                      setValue(event.target.value)
-                      onTyping?.()
-                    }}
-                    // Quitter le champ (ailleurs que dans le compositeur) rend la main à la voix.
-                    onBlur={(event) => {
-                      if (!event.currentTarget.form?.contains(event.relatedTarget)) {
-                        setIsKeyboardOpen(false)
-                      }
-                    }}
-                    onKeyDown={handleKeyDown}
-                    onPaste={handlePaste}
-                    className="max-h-40 min-h-0 flex-1 self-center rounded-none border-0 bg-transparent px-1 py-1.5 focus-visible:ring-0 dark:bg-transparent"
-                  />
-                </ScrollFade>
+                    <div className="flex items-end gap-0.5 p-1 sm:gap-1 sm:p-1.5">
+                      {attachButtons}
+                      <EmojiPickerButton
+                        open={isEmojiPickerOpen}
+                        onOpenChange={handleEmojiPickerOpenChange}
+                        onSelect={insertEmoji}
+                        finalFocus={textareaRef}
+                        disabled={disabled}
+                        className={ICON_BUTTON_CLASS}
+                      />
 
-                <SendButton
-                  hasContent={hasContent}
-                  canSend={canSend}
-                  disabled={disabled}
-                  isUploading={attachments.isUploading}
-                  canSendVoice={canSendVoice}
-                  sentCount={sentCount}
-                  onBackToVoice={() => setIsKeyboardOpen(false)}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                      {/* Long message : les bords du champ s'estompent au lieu d'une barre de défilement. */}
+                      <ScrollFade asChild size={16} shrink={0} blur={0}>
+                        <Textarea
+                          ref={textareaRef}
+                          value={value}
+                          rows={1}
+                          disabled={disabled}
+                          autoFocus={isKeyboardOpen}
+                          aria-label="Message"
+                          placeholder={disabled ? "Connexion perdue…" : "Message"}
+                          enterKeyHint={isTouchDevice ? "enter" : "send"}
+                          autoCapitalize="sentences"
+                          onChange={(event) => {
+                            setValue(event.target.value)
+                            onTyping?.()
+                          }}
+                          // Quitter le champ (ailleurs que dans le compositeur) rend la main à la voix.
+                          onBlur={(event) => {
+                            if (!event.currentTarget.form?.contains(event.relatedTarget)) {
+                              setIsKeyboardOpen(false)
+                            }
+                          }}
+                          onKeyDown={handleKeyDown}
+                          onPaste={handlePaste}
+                          className="max-h-40 min-h-0 flex-1 self-center rounded-none border-0 bg-transparent px-1 py-1.5 focus-visible:ring-0 dark:bg-transparent"
+                        />
+                      </ScrollFade>
+
+                      <SendButton
+                        hasContent={hasContent}
+                        canSend={canSend}
+                        disabled={disabled}
+                        isUploading={attachments.isUploading}
+                        canSendVoice={canSendVoice}
+                        sentCount={sentCount}
+                        onBackToVoice={() => setIsKeyboardOpen(false)}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </LayoutGroup>
+          </div>
+        </motion.div>
       </ReducedMotionConfig>
 
       <ComposerHint
@@ -318,27 +345,31 @@ function SendButton({
   onBackToVoice,
 }: SendButtonProps) {
   const showMic = canSendVoice && !hasContent && !isUploading
+  const morph = useTempoTransition(spring.morph)
 
+  // Même `layoutId` que l'orbe du dock vocal : l'un devient l'autre.
   return (
-    <Button
-      type={showMic ? "button" : "submit"}
-      size="icon"
-      disabled={showMic ? disabled : !canSend}
-      onClick={showMic ? onBackToVoice : undefined}
-      className={ICON_BUTTON_CLASS}
-      aria-label={
-        showMic
-          ? "Revenir au message vocal"
-          : isUploading
-            ? "Envoi des fichiers en cours…"
-            : "Envoyer le message"
-      }
-    >
-      <SendIcon
-        mode={isUploading ? "uploading" : showMic ? "mic" : "send"}
-        sentCount={sentCount}
-      />
-    </Button>
+    <motion.div layoutId={COMPOSER_LAYOUT_IDS.primary} transition={morph} className="shrink-0 rounded-full">
+      <Button
+        type={showMic ? "button" : "submit"}
+        size="icon"
+        disabled={showMic ? disabled : !canSend}
+        onClick={showMic ? onBackToVoice : undefined}
+        className={ICON_BUTTON_CLASS}
+        aria-label={
+          showMic
+            ? "Revenir au message vocal"
+            : isUploading
+              ? "Envoi des fichiers en cours…"
+              : "Envoyer le message"
+        }
+      >
+        <SendIcon
+          mode={isUploading ? "uploading" : showMic ? "mic" : "send"}
+          sentCount={sentCount}
+        />
+      </Button>
+    </motion.div>
   )
 }
 
@@ -371,39 +402,65 @@ function ComposerHint({
   /** Ce que vous ne pouvez pas envoyer ici, et pourquoi. */
   notice: string | null
 }) {
-  if (notice && !hasFailures) {
-    return (
-      <p role="status" className="mt-1.5 flex items-center justify-center gap-1.5 px-3 text-center text-xs text-muted-foreground sm:text-[11px]">
-        <HugeiconsIcon icon={LockIcon} size={12} strokeWidth={2} aria-hidden className="shrink-0" />
-        {notice}
-      </p>
-    )
-  }
-
-  if (hasFailures) {
-    return (
-      <p role="alert" className="mt-1.5 px-3 text-xs text-destructive sm:px-4 sm:text-[11px]">
-        Réessayez ou retirez les fichiers en échec pour envoyer le message.
-      </p>
-    )
-  }
-
+  const swap = useTempoTransition(transition.swap)
   const kbd = "font-sans font-medium"
+
+  // Une seule consigne à la fois, choisie par ordre d'importance.
+  const hint = hasFailures
+    ? {
+        key: "failures",
+        role: "alert",
+        className: "text-xs text-destructive sm:text-[11px]",
+        content: "Réessayez ou retirez les fichiers en échec pour envoyer le message.",
+      }
+    : notice
+      ? {
+          key: "notice",
+          role: "status",
+          className: "flex items-center justify-center gap-1.5 text-xs text-muted-foreground sm:text-[11px]",
+          content: (
+            <>
+              <HugeiconsIcon icon={LockIcon} size={12} strokeWidth={2} aria-hidden className="shrink-0" />
+              {notice}
+            </>
+          ),
+        }
+      : {
+          key: view,
+          role: undefined,
+          // Utile au clavier et à la souris seulement.
+          className: "hidden text-[11px] text-muted-foreground pointer-fine:block",
+          content:
+            view === "text" ? (
+              <>
+                <kbd className={kbd}>Entrée</kbd> pour envoyer ·{" "}
+                <kbd className={kbd}>Maj + Entrée</kbd> pour un saut de ligne · glissez ou
+                collez des fichiers pour les joindre
+              </>
+            ) : (
+              <>
+                Maintenez le micro pour parler, relâchez pour envoyer · glissez vers le haut pour
+                verrouiller, vers la gauche pour annuler · <kbd className={kbd}>Échap</kbd> annule
+              </>
+            ),
+        }
+
   return (
-    <p className="mt-2 hidden px-4 text-center text-[11px] text-muted-foreground pointer-fine:block">
-      {view === "text" ? (
-        <>
-          <kbd className={kbd}>Entrée</kbd> pour envoyer ·{" "}
-          <kbd className={kbd}>Maj + Entrée</kbd> pour un saut de ligne · glissez ou
-          collez des fichiers pour les joindre
-        </>
-      ) : (
-        <>
-          Maintenez le micro pour parler, relâchez pour envoyer · glissez vers le haut pour
-          verrouiller, vers la gauche pour annuler · <kbd className={kbd}>Échap</kbd> annule
-        </>
-      )}
-    </p>
+    // Les deux consignes partagent la même case le temps du fondu : rien ne bouge autour.
+    <div className="grid px-3 text-center sm:px-4">
+      <AnimatePresence initial={false}>
+        <motion.p
+          key={hint.key}
+          role={hint.role}
+          initial={{ opacity: 0, filter: blur.icon }}
+          animate={{ opacity: 1, filter: "blur(0px)", transition: swap }}
+          exit={{ opacity: 0, filter: blur.icon, transition: swap }}
+          className={cn("col-start-1 row-start-1 mt-2", hint.className)}
+        >
+          {hint.content}
+        </motion.p>
+      </AnimatePresence>
+    </div>
   )
 }
 

@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils"
 import { useStreamLevel } from "../hooks/use-audio-level"
 import { usePushToTalk } from "../hooks/use-push-to-talk"
 import { useVoiceRecorder } from "../hooks/use-voice-recorder"
+import { COMPOSER_LAYOUT_IDS } from "../lib/composer-layout"
 import { uploadAttachment } from "../lib/attachments"
 import { MAX_VOICE_DURATION_MS, MIN_VOICE_DURATION_MS } from "../lib/config"
 import { formatDuration } from "../lib/format"
@@ -332,6 +333,7 @@ function MicButton({
 }: MicButtonProps) {
   const pop = useTempoTransition(spring.pop)
   const swap = useTempoTransition(transition.swap)
+  const morph = useTempoTransition(spring.morph)
 
   return (
     <div className="relative -mt-9 flex flex-col items-center gap-2">
@@ -340,38 +342,41 @@ function MicButton({
         {isHolding && <LockRail key="lock-rail" progress={lockProgress} />}
       </AnimatePresence>
 
-      {/* Sous le doigt, le bouton grossit ; prêt à annuler, il se fait plus petit. */}
-      <motion.div
-        animate={{ scale: isCancelArmed ? 0.9 : isHolding ? 1.14 : 1 }}
-        transition={pop}
-      >
-        <AnimateIcon animateOnHover="wiggle" asChild>
-          <button
-            type="button"
-            disabled={disabled}
-            {...buttonProps}
-            className="block touch-none rounded-full outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
-          >
-            <VoiceHalo size={MIC_SIZE} tone={tone} getLevel={getLevel} isBreathing={isBreathing}>
-              <span className="relative inline-flex">
-                <AnimatePresence mode="popLayout" initial={false}>
-                  <motion.span
-                    key={icon}
-                    className="inline-flex"
-                    initial={{ opacity: 0, scale: scale.icon, filter: blur.icon }}
-                    animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: swap }}
-                    exit={{ opacity: 0, scale: scale.icon, filter: blur.icon, transition: swap }}
-                  >
-                    {icon === "mic" && <Mic size={30} />}
-                    {icon === "cancel" && <Delete02 size={26} />}
-                    {icon === "send" && <ArrowUp02 size={28} />}
-                    {icon === "sending" && <Spinner size={26} />}
-                  </motion.span>
-                </AnimatePresence>
-              </span>
-            </VoiceHalo>
-          </button>
-        </AnimateIcon>
+      {/* Même `layoutId` que le bouton d'envoi du mode texte : l'orbe s'y rétracte, et en renaît. */}
+      <motion.div layoutId={COMPOSER_LAYOUT_IDS.primary} transition={morph} className="rounded-full">
+        {/* Sous le doigt, le bouton grossit ; prêt à annuler, il se fait plus petit. */}
+        <motion.div
+          animate={{ scale: isCancelArmed ? 0.9 : isHolding ? 1.14 : 1 }}
+          transition={pop}
+        >
+          <AnimateIcon animateOnHover="wiggle" asChild>
+            <button
+              type="button"
+              disabled={disabled}
+              {...buttonProps}
+              className="block touch-none rounded-full outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
+            >
+              <VoiceHalo size={MIC_SIZE} tone={tone} getLevel={getLevel} isBreathing={isBreathing}>
+                <span className="relative inline-flex">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.span
+                      key={icon}
+                      className="inline-flex"
+                      initial={{ opacity: 0, scale: scale.icon, filter: blur.icon }}
+                      animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: swap }}
+                      exit={{ opacity: 0, scale: scale.icon, filter: blur.icon, transition: swap }}
+                    >
+                      {icon === "mic" && <Mic size={30} />}
+                      {icon === "cancel" && <Delete02 size={26} />}
+                      {icon === "send" && <ArrowUp02 size={28} />}
+                      {icon === "sending" && <Spinner size={26} />}
+                    </motion.span>
+                  </AnimatePresence>
+                </span>
+              </VoiceHalo>
+            </button>
+          </AnimateIcon>
+        </motion.div>
       </motion.div>
 
       <span className="relative grid h-4 place-items-center">
