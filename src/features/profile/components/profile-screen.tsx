@@ -16,6 +16,7 @@ import { signOut } from "@/features/auth/lib/sign-out"
 import { NotificationSettings } from "@/features/push/components/notification-settings"
 import { QUIET_SETTINGS_ANCHOR } from "@/features/quiet-mode/components/quiet-mode-button"
 import { QuietModeSettings } from "@/features/quiet-mode/components/quiet-mode-settings"
+import { ThemeSettings } from "@/features/theme/components/theme-settings"
 import { PAGE_ENTRANCE } from "@/lib/motion"
 import { DeleteAccountDialog } from "./delete-account-dialog"
 import { EmailForm } from "./email-form"
@@ -68,6 +69,10 @@ export function ProfileScreen({ user }: { user: SessionUser }) {
             <PasswordForm />
           </Section>
         )}
+
+        <Section title="Apparence">
+          <ThemeSettings />
+        </Section>
 
         <Section title="Notifications">
           <NotificationSettings />

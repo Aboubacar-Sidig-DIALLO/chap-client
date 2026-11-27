@@ -5,6 +5,7 @@ import type { SessionUser } from "@/features/auth/components/session-gate"
 import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { QuietModeButton, QuietStatus } from "@/features/quiet-mode/components/quiet-mode-button"
+import { ThemeMenuButton } from "@/features/theme/components/theme-menu-button"
 import { greetingFor } from "../lib/greeting"
 import { SignOutButton } from "./sign-out-button"
 
@@ -15,7 +16,8 @@ interface HomeHeaderProps {
 }
 
 /**
- * En-tête de l'accueil sur mobile : salutation, avatar (vers le profil) et déconnexion.
+ * En-tête de l'accueil sur mobile : salutation, avatar (vers le profil), apparence,
+ * « Ne pas déranger » et déconnexion.
  * Sur grand écran, la marque, la barre de compte et le panneau de bienvenue le remplacent.
  */
 export function HomeHeader({ user, isPageTitle }: HomeHeaderProps) {
@@ -32,6 +34,7 @@ export function HomeHeader({ user, isPageTitle }: HomeHeaderProps) {
           <QuietStatus fallback="Avec qui voulez-vous parler aujourd'hui ?" />
         </p>
       </div>
+      <ThemeMenuButton />
       <QuietModeButton />
       <SignOutButton />
     </header>

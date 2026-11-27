@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { QuietModeButton, QuietStatus } from "@/features/quiet-mode/components/quiet-mode-button"
+import { ThemeMenuButton } from "@/features/theme/components/theme-menu-button"
 import { APP_NAME } from "@/lib/config"
 import { SignOutButton } from "./sign-out-button"
 
@@ -36,7 +37,7 @@ export function SidebarBrand() {
 
 /**
  * Bas de la barre latérale sur grand écran : son compte (vers le profil),
- * l'administration pour un administrateur, et la déconnexion.
+ * l'administration pour un administrateur, l'apparence, « Ne pas déranger » et la déconnexion.
  */
 export function AccountBar({ user }: { user: SessionUser }) {
   return (
@@ -67,6 +68,7 @@ export function AccountBar({ user }: { user: SessionUser }) {
           <HugeiconsIcon icon={UserShield01Icon} size={18} strokeWidth={2} />
         </Link>
       )}
+      <ThemeMenuButton />
       <QuietModeButton />
       <SignOutButton />
     </div>
