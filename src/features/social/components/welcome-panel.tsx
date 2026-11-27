@@ -1,6 +1,6 @@
 "use client"
 
-import { useSyncExternalStore } from "react"
+import { useState, useSyncExternalStore } from "react"
 import { Effect } from "@animate-ui/react/primitives/effects/effect"
 import {
   Attachment01Icon,
@@ -8,17 +8,16 @@ import {
   HeadsetIcon,
   HourglassIcon,
   Mic01Icon,
+  QrCodeIcon,
   Search01Icon,
-  Share08Icon,
-  Tick02Icon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 import { Kbd } from "@/components/ui/kbd"
+import { InviteFriendDialog } from "@/features/invites/components/invite-friend-dialog"
 import { authClient } from "@/lib/auth-client"
 import { PAGE_ENTRANCE } from "@/lib/motion"
 import { sendHomeCommand } from "../hooks/use-home-commands"
-import { useInvite } from "../hooks/use-invite"
 import { useSearchShortcutLabel } from "../hooks/use-search-shortcut"
 import { greetingFor } from "../lib/greeting"
 
@@ -34,7 +33,7 @@ const FEATURES = [
  */
 export function WelcomePanel() {
   const shortcutLabel = useSearchShortcutLabel()
-  const { invite, isCopied, label: inviteLabel } = useInvite()
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
 
   return (
     <main className="@container hidden flex-1 overflow-y-auto bg-[radial-gradient(70%_55%_at_50%_30%,color-mix(in_oklch,var(--voice)_8%,transparent),transparent_70%)] md:flex">
@@ -75,14 +74,14 @@ export function WelcomePanel() {
           </li>
           <li>
             <WelcomeAction
-              icon={isCopied ? Tick02Icon : Share08Icon}
-              title={inviteLabel}
-              description="Partagez le lien d'inscription"
-              onClick={invite}
-              aria-live="polite"
+              icon={QrCodeIcon}
+              title="Inviter un ami"
+              description="Par QR code ou lien, valable 1 min"
+              onClick={() => setIsInviteOpen(true)}
             />
           </li>
         </ul>
+        <InviteFriendDialog open={isInviteOpen} onOpenChange={setIsInviteOpen} />
 
         <footer className="flex flex-col items-center gap-3 text-xs text-muted-foreground">
           <ul aria-label="Dans chaque conversation" className="flex flex-wrap justify-center gap-2">

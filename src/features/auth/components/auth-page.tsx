@@ -4,8 +4,10 @@ import { Suspense, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Effect } from "@animate-ui/react/primitives/effects/effect"
+import { UserAdd01Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 import { authClient } from "@/lib/auth-client"
-import { ROUTES } from "../lib/routes"
+import { authHref, NEXT_PARAM, ROUTES, safeNextPath } from "../lib/routes"
 import { AuthForm, type AuthMode } from "./auth-form"
 import { AuthShell } from "./auth-shell"
 
@@ -39,10 +41,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
         description={description}
         footer={
           <>
-            {footer.text}{" "}
-            <Link href={footer.href} className="font-medium text-foreground underline-offset-4 hover:underline">
-              {footer.link}
-            </Link>
+            {footer.text} <AuthSwitchLink href={footer.href}>{footer.link}</AuthSwitchLink>
           </>
         }
       >
@@ -54,16 +53,48 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   )
 }
 
+/** La page où revenir une fois connecté (chemin interne vérifié), ou `null`. */
+function useNextPath() {
+  return safeNextPath(useSearchParams().get(NEXT_PARAM))
+}
+
 function AuthContent({ mode }: { mode: AuthMode }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const next = useNextPath()
   const { data: session } = authClient.useSession()
 
-  // Déjà connecté, ou compte créé / connexion réussie à l'instant : direction le chat.
+  // Déjà connecté, ou compte créé / connexion réussie à l'instant : direction la
+  // page demandée (une invitation…), sinon le chat.
   useEffect(() => {
-    if (session) router.replace(ROUTES.home)
-  }, [session, router])
+    if (session) router.replace(next ?? ROUTES.home)
+  }, [session, router, next])
 
-  // `key` : le formulaire repart de zéro en passant d'une page à l'autre.
-  return <AuthForm key={mode} mode={mode} initialEmail={searchParams.get("email") ?? ""} />
+  return (
+    <div className="flex w-full flex-col gap-5">
+      {next?.startsWith(ROUTES.invite("")) && (
+        <p
+          role="status"
+          className="flex items-center gap-2.5 rounded-2xl border border-voice/20 bg-voice/8 px-3.5 py-2.5 text-left text-sm"
+        >
+          <HugeiconsIcon icon={UserAdd01Icon} size={18} strokeWidth={2} aria-hidden className="shrink-0 text-voice" />
+          {mode === "sign-up"
+            ? "Créez votre compte pour accepter l'invitation : on vous y ramène aussitôt."
+            : "Connectez-vous pour accepter l'invitation : on vous y ramène aussitôt."}
+        </p>
+      )}
+      {/* `key` : le formulaire repart de zéro en passant d'une page à l'autre. */}
+      <AuthForm key={mode} mode={mode} initialEmail={searchParams.get("email") ?? ""} next={next} />
+    </div>
+  )
+}
+
+/** Vers l'autre parcours (connexion ↔ inscription), sans perdre la page où revenir. */
+function AuthSwitchLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const next = useNextPath()
+  return (
+    <Link href={authHref(href, { next })} className="font-medium text-foreground underline-offset-4 hover:underline">
+      {children}
+    </Link>
+  )
 }

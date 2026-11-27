@@ -68,7 +68,12 @@ export function FriendsSection({
         </Section>
       </Reveal>
 
-      <Section title="Amis" icon={UserMultipleIcon} count={friends.length}>
+      <Section
+        title="Amis"
+        icon={UserMultipleIcon}
+        count={friends.length}
+        action={<InviteButton variant="ghost" size="sm" label="Inviter" className="h-9 text-voice md:h-8" />}
+      >
         {/* Premier ami, dernier ami parti : la liste et l'invitation se fondent l'une dans l'autre. */}
         <AutoHeight>
         <Swap swapKey={friends.length === 0 && outgoing.length === 0 ? "empty" : "list"}>
@@ -76,7 +81,7 @@ export function FriendsSection({
           <SectionEmpty
             icon={<HugeiconsIcon icon={UserAdd01Icon} strokeWidth={2} />}
             title="Pas encore d'amis"
-            description="Recherchez vos proches par leur nom, ou invitez-les à vous rejoindre s'ils n'ont pas encore de compte."
+            description="Recherchez vos proches par leur nom, ou invitez-les par QR code ou lien : même sans compte, ils vous rejoignent en un instant."
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 <Button onClick={onFindFriends}>Trouver des amis</Button>

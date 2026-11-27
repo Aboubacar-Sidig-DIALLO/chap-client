@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { authClient } from "@/lib/auth-client"
 import { type AuthError, getAuthErrorMessage } from "../lib/errors"
-import { ROUTES } from "../lib/routes"
+import { authHref, ROUTES } from "../lib/routes"
 import { isValidEmail, MAX_NAME_LENGTH, normalizeEmail, normalizeName } from "../lib/validation"
 import { Reveal } from "@/components/motion/reveal"
 import { FormError } from "./form-error"
@@ -18,6 +18,8 @@ export type AuthMode = "sign-up" | "sign-in"
 interface AuthFormProps {
   mode: AuthMode
   initialEmail?: string
+  /** Page où revenir une fois connecté, gardée en passant à l'autre parcours. */
+  next?: string | null
 }
 
 const ERROR_ID = "auth-error"
@@ -40,7 +42,7 @@ const ERROR_ACTIONS: Record<string, { label: string; route: string }> = {
  * signale, et le champ apparaît sous l'adresse.
  * En cas de succès, la session se met à jour et la page redirige vers le chat.
  */
-export function AuthForm({ mode, initialEmail = "" }: AuthFormProps) {
+export function AuthForm({ mode, initialEmail = "", next = null }: AuthFormProps) {
   const isSignUp = mode === "sign-up"
   const [name, setName] = useState("")
   const [email, setEmail] = useState(initialEmail)
@@ -179,7 +181,7 @@ export function AuthForm({ mode, initialEmail = "" }: AuthFormProps) {
               <>
                 {" "}
                 <Link
-                  href={`${errorAction.route}?email=${encodeURIComponent(normalizeEmail(email))}`}
+                  href={authHref(errorAction.route, { email: normalizeEmail(email), next })}
                   className="font-medium text-foreground underline underline-offset-4"
                 >
                   {errorAction.label}

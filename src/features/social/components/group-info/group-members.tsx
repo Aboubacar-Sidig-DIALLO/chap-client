@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowRight01Icon, LockIcon, UserAdd01Icon } from "@hugeicons/core-free-icons"
+import { ArrowRight01Icon, LockIcon, QrCodeIcon, UserAdd01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AnimatedItem, AnimatedItems } from "@/components/motion/animated-list"
 import { Button } from "@/components/ui/button"
@@ -25,11 +25,21 @@ interface MemberListProps {
   /** Propriétaire ou administrateur. */
   canAdd: boolean
   onAddClick: () => void
+  /** Inviter par un lien ou un QR code éphémère (mêmes droits qu'ajouter). */
+  onInviteClick: () => void
   onMemberClick: (member: GroupMember) => void
 }
 
 /** Membres par ordre d'arrivée, chacun avec son rôle. */
-export function MemberList({ group, currentUserId, isOwner, canAdd, onAddClick, onMemberClick }: MemberListProps) {
+export function MemberList({
+  group,
+  currentUserId,
+  isOwner,
+  canAdd,
+  onAddClick,
+  onInviteClick,
+  onMemberClick,
+}: MemberListProps) {
   const isFull = group.members.length >= GROUP_MAX_MEMBERS
 
   return (
@@ -50,6 +60,19 @@ export function MemberList({ group, currentUserId, isOwner, canAdd, onAddClick, 
                 <HugeiconsIcon icon={UserAdd01Icon} size={16} strokeWidth={2} />
               </span>
               <span className="font-medium">{isFull ? "Groupe complet" : "Ajouter des membres"}</span>
+            </button>
+          </li>
+        )}
+        {canAdd && !isFull && (
+          <li>
+            <button type="button" onClick={onInviteClick} className={`${ROW_CLASS} ${ACTIONABLE_ROW_CLASS} text-voice`}>
+              <span className="grid size-8 place-items-center rounded-full bg-voice/12">
+                <HugeiconsIcon icon={QrCodeIcon} size={16} strokeWidth={2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">Inviter par lien ou QR code</span>
+                <span className="block text-xs text-muted-foreground">Même sans être amis · valable 1 min</span>
+              </span>
             </button>
           </li>
         )}

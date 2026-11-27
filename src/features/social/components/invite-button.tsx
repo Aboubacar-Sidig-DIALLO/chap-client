@@ -1,18 +1,29 @@
 "use client"
 
-import { Share08Icon, Tick02Icon } from "@hugeicons/core-free-icons"
+import { useState } from "react"
+import { QrCodeIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@/components/ui/button"
-import { useInvite } from "../hooks/use-invite"
+import { InviteFriendDialog } from "@/features/invites/components/invite-friend-dialog"
 
-/** Invite un proche à créer son compte (voir `useInvite`). */
-export function InviteButton({ variant = "outline" }: { variant?: "outline" | "default" }) {
-  const { invite, isCopied, label } = useInvite()
+interface InviteButtonProps extends Pick<React.ComponentProps<typeof Button>, "variant" | "size" | "className"> {
+  label?: string
+}
+
+/**
+ * Invite quelqu'un à devenir ami, par QR code ou lien valable une minute.
+ * Sans compte, il en crée un, puis revient à l'invitation.
+ */
+export function InviteButton({ variant = "outline", label = "Inviter un ami", ...props }: InviteButtonProps) {
+  const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <Button variant={variant} onClick={invite} aria-live="polite">
-      <HugeiconsIcon icon={isCopied ? Tick02Icon : Share08Icon} strokeWidth={2} data-icon="inline-start" />
-      {label}
-    </Button>
+    <>
+      <Button variant={variant} onClick={() => setIsOpen(true)} {...props}>
+        <HugeiconsIcon icon={QrCodeIcon} strokeWidth={2} data-icon="inline-start" />
+        {label}
+      </Button>
+      <InviteFriendDialog open={isOpen} onOpenChange={setIsOpen} />
+    </>
   )
 }

@@ -6,6 +6,7 @@ import { SHEET_BACKDROP_CLASS } from "@/components/confirm-dialog"
 import { type ViewDirection, ViewSwap } from "@/components/motion/view-swap"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
+import { InvitePanel } from "@/features/invites/components/invite-panel"
 import { getErrorMessage } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useGroupDetails } from "../../hooks/use-group-details"
@@ -16,7 +17,7 @@ import { GroupIdentity } from "./group-identity"
 import { AddMembers, MemberList } from "./group-members"
 import { GroupPermissionsView, MemberSettingsView, PermissionsRow } from "./group-permissions"
 import { ChooseSuccessorView, LeaveGroupButton } from "./leave-group"
-import { ActionError, type RunAction } from "./shared"
+import { ActionError, type RunAction, ViewHeader } from "./shared"
 
 type GroupDetails = ReturnType<typeof useGroupDetails>
 
@@ -24,6 +25,7 @@ type GroupDetails = ReturnType<typeof useGroupDetails>
 type View =
   | { name: "info" }
   | { name: "add" }
+  | { name: "invite" }
   | { name: "permissions" }
   | { name: "member"; memberId: string }
   | { name: "leave" }
@@ -148,6 +150,7 @@ function allowedView(view: View, group: GroupSummary, userId: string): View {
   const isOwner = role === "owner"
   switch (view.name) {
     case "add":
+    case "invite":
       return canAddMembers(role) ? view : INFO
     case "permissions":
       return isOwner ? view : INFO
@@ -191,6 +194,17 @@ function GroupInfoView({ view, group, details, currentUserId, error, run, go, ba
           onAdd={details.addMembers}
           onBack={back}
         />
+      )
+
+    case "invite":
+      return (
+        <>
+          <ViewHeader title="Inviter par lien" description="Même sans être amis · valable 1 minute" onBack={back} />
+          <InvitePanel
+            target={{ type: "group", groupId: group.id }}
+            shareText={`Rejoins le groupe « ${group.name} », le lien est valable 1 minute :`}
+          />
+        </>
       )
 
     case "permissions":
@@ -247,6 +261,7 @@ function GroupInfoView({ view, group, details, currentUserId, error, run, go, ba
             isOwner={isOwner}
             canAdd={canAddMembers(role)}
             onAddClick={() => go({ name: "add" })}
+            onInviteClick={() => go({ name: "invite" })}
             onMemberClick={(clicked) => go({ name: "member", memberId: clicked.id })}
           />
           <LeaveGroupButton

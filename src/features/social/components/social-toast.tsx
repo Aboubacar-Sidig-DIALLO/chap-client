@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Cancel01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import type { AnnouncedNotice, HomeNotice } from "../hooks/use-social"
 import { conversationHref } from "../lib/conversation"
@@ -40,6 +41,26 @@ function NoticeText({ notice }: { notice: HomeNotice }) {
           {name} vous a ajouté au groupe « {notice.groupName} »
         </>
       )
+    case "invite-accepted":
+      return notice.group ? (
+        <>
+          {name} a rejoint « {notice.group.name} » grâce à votre invitation
+        </>
+      ) : (
+        <>{name} a accepté votre invitation : vous êtes amis !</>
+      )
+  }
+}
+
+/** La conversation à ouvrir depuis l'annonce, s'il y en a une. */
+function noticeHref(notice: HomeNotice) {
+  switch (notice.type) {
+    case "message":
+      return conversationHref(notice.conversation)
+    case "invite-accepted":
+      return notice.group ? ROUTES.group(notice.group.id) : ROUTES.friend(notice.user.id)
+    default:
+      return null
   }
 }
 
@@ -65,6 +86,7 @@ export function SocialToast({ announced, onDismiss, onAccept }: SocialToastProps
   }, [announced])
 
   const offset = reduceMotion ? 0 : -16
+  const href = announced ? noticeHref(announced.notice) : null
 
   return (
     <div
@@ -91,9 +113,9 @@ export function SocialToast({ announced, onDismiss, onAccept }: SocialToastProps
             <p className="min-w-0 flex-1 text-sm">
               <NoticeText notice={announced.notice} />
             </p>
-            {announced.notice.type === "message" && (
+            {href && (
               <Link
-                href={conversationHref(announced.notice.conversation)}
+                href={href}
                 onClick={onDismiss}
                 className={buttonVariants({ size: "sm", className: "h-8 shrink-0" })}
               >
