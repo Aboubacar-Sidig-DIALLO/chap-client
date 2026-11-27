@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react"
 import type { SessionUser } from "@/features/auth/components/session-gate"
+import { PushInvite } from "@/features/push/components/push-invite"
 import { cn } from "@/lib/utils"
 import { useHomeCommands } from "../hooks/use-home-commands"
 import { useSearchShortcut } from "../hooks/use-search-shortcut"
@@ -72,6 +73,9 @@ export function HomeSidebar({ user, activeKey, className }: HomeSidebarProps) {
         <div className="scrollbar-subtle flex flex-1 flex-col md:min-h-0 md:overflow-y-auto md:overscroll-contain">
           <div className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-5 px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] md:max-w-none md:gap-3 md:px-3 md:pt-1 md:pb-4">
             <HomeHeader user={user} isPageTitle={activeKey === null} />
+
+            {/* Recevoir messages et appels application fermée (proposé, jamais imposé). */}
+            <PushInvite />
 
             {/* La recherche reste visible en défilant. */}
             <div className="sticky top-0 z-10 -mx-4 bg-background/85 px-4 py-2 backdrop-blur-lg md:-mx-3 md:bg-sidebar/85 md:px-3 md:pt-3">

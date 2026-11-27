@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ROUTES } from "@/features/auth/lib/routes"
 import { AutoJoinCall } from "@/features/call/components/auto-join-call"
@@ -11,6 +11,8 @@ import { LiveBanner } from "@/features/call/components/live-banner"
 import { LiveButton } from "@/features/call/components/live-button"
 import { GroupInfoDialog } from "@/features/social/components/group-info/group-info-dialog"
 import { TalkieProvider } from "@/features/talkie/components/talkie-provider"
+import { clearNotifications } from "@/features/push/lib/push-store"
+import { conversationKey } from "@/features/social/types"
 import { restrictionNotice } from "@/features/social/lib/group-rights"
 import { useAttachmentDrafts } from "../hooks/use-attachment-drafts"
 import { useChat } from "../hooks/use-chat"
@@ -85,6 +87,12 @@ export function ChatRoom({
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false)
   useUnreadTitle(unreadCount)
   useVisualViewport()
+
+  // Conversation ouverte : ses notifications (messages, appel) n'ont plus lieu d'être.
+  const key = conversationKey(conversation)
+  useEffect(() => {
+    void clearNotifications(key)
+  }, [key])
 
   if (unavailableReason) return <ConversationUnavailable reason={unavailableReason} />
 

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Figtree } from "next/font/google"
 import { ImpersonationBanner } from "@/features/admin/components/impersonation-banner"
 import { SessionEndedListener } from "@/features/auth/components/session-ended-listener"
+import { PushNavigationListener } from "@/features/push/components/push-navigation-listener"
 import { IncomingCallNotifier } from "@/features/social/components/incoming-call"
 import { APP_NAME } from "@/lib/config"
 import "./globals.css"
@@ -41,6 +42,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <IncomingCallNotifier />
         {/* Sessions fermées depuis un autre appareil : retour à la connexion, partout. */}
         <SessionEndedListener />
+        {/* Notification touchée, application déjà ouverte : on y navigue sur place. */}
+        <PushNavigationListener />
       </body>
     </html>
   )

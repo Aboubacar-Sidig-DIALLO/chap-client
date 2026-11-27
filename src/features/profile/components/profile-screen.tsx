@@ -12,7 +12,8 @@ import { SessionGate, type SessionUser } from "@/features/auth/components/sessio
 import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { Section } from "@/features/social/components/section"
-import { authClient } from "@/lib/auth-client"
+import { signOut } from "@/features/auth/lib/sign-out"
+import { NotificationSettings } from "@/features/push/components/notification-settings"
 import { PAGE_ENTRANCE } from "@/lib/motion"
 import { DeleteAccountDialog } from "./delete-account-dialog"
 import { EmailForm } from "./email-form"
@@ -66,6 +67,10 @@ export function ProfileScreen({ user }: { user: SessionUser }) {
           </Section>
         )}
 
+        <Section title="Notifications">
+          <NotificationSettings />
+        </Section>
+
         <Section title="Compte">
           <div className="divide-y overflow-hidden rounded-3xl border bg-card">
             {isAdmin(user) && (
@@ -101,7 +106,7 @@ export function ProfileScreen({ user }: { user: SessionUser }) {
         title="Se déconnecter ?"
         description="Vous pourrez vous reconnecter à tout moment avec votre adresse email."
         confirmLabel="Se déconnecter"
-        onConfirm={() => void authClient.signOut()}
+        onConfirm={() => void signOut()}
       />
     </main>
   )
