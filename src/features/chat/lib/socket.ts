@@ -23,11 +23,13 @@ export type SendMessageAck =
   | { ok: true; message: ServerMessage }
   | { ok: false; error: string }
 
+export type DeleteMessageAck = { ok: true } | { ok: false; error: string }
+
 /** Contrat Socket.io — à garder synchronisé avec le serveur (`sse/src/chat/chat.types.ts`). */
 interface ServerToClientEvents {
   /** Conversation ouverte (accès vérifié), juste avant son historique. */
   "conversation:ready": (conversation: ConversationInfo) => void
-  /** Le groupe a changé de nom ou de photo. */
+  /** Le groupe a changé : nom, photo, ou vos droits. */
   "conversation:updated": (conversation: ConversationInfo) => void
   /** Accès retiré (ami retiré, groupe quitté) : le serveur ferme la connexion. */
   "conversation:closed": () => void
@@ -35,6 +37,8 @@ interface ServerToClientEvents {
   "session:ended": () => void
   "chat:history": (messages: ServerMessage[]) => void
   "message:new": (message: ServerMessage) => void
+  /** Un modérateur du groupe a supprimé un message. */
+  "message:deleted": (event: { messageId: string; deletedBy: ChatUser }) => void
   /** Groupe : qui a la conversation ouverte en ce moment. */
   "users:online": (users: ChatUser[]) => void
   /** Conversation privée : présence de l'ami dans l'application, à l'ouverture puis à chaque changement. */
@@ -66,6 +70,8 @@ interface ClientToServerEvents {
     payload: { id: string; content: string; attachmentIds: string[] },
     ack: (response: SendMessageAck) => void
   ) => void
+  /** Supprime un message pour tous (propriétaire et administrateurs d'un groupe). */
+  "message:delete": (messageId: string, ack: (response: DeleteMessageAck) => void) => void
   activity: (activity: UserActivity | null) => void
   /** Le message vocal `messageId` a été écouté. */
   "voice:listened": (messageId: string) => void

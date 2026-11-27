@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { SmilePlusIcon } from "@hugeicons/core-free-icons"
+import { Delete02Icon, SmilePlusIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AnimatePresence, motion } from "motion/react"
 import { SlidingNumber } from "@animate-ui/react/primitives/texts/sliding-number"
@@ -12,6 +12,7 @@ import {
   transition,
   useTempoTransition,
 } from "@animate-ui/react/utils/motion"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { useLongPress } from "../hooks/use-long-press"
@@ -25,21 +26,30 @@ interface ReactableMessageProps {
   isOwn: boolean
   currentUserId: string
   onReact: (message: ChatMessage, emoji: ReactionEmoji) => void
+  /**
+   * Modérateur du groupe : supprime le message pour tous, après confirmation.
+   * Renvoie l'erreur à afficher, ou `null`.
+   */
+  onDelete?: (message: ChatMessage) => Promise<string | null>
   children: React.ReactNode
 }
 
 /**
  * Rend un message réactif : au survol (souris), un bouton ouvre la barre de
  * réactions ; au doigt, un appui long. Les réactions s'affichent sous le message.
+ * Un modérateur y trouve aussi de quoi le supprimer.
  */
 export function ReactableMessage({
   message,
   isOwn,
   currentUserId,
   onReact,
+  onDelete,
   children,
 }: ReactableMessageProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
   const longPress = useLongPress(() => setIsOpen(true))
   const myReaction = message.reactions.find((item) => item.user.id === currentUserId)?.emoji
@@ -66,8 +76,34 @@ export function ReactableMessage({
           isOwn={isOwn}
           selected={myReaction}
           onSelect={react}
+          onDeleteRequest={
+            onDelete &&
+            (() => {
+              setIsOpen(false)
+              setIsConfirmOpen(true)
+            })
+          }
         />
       </div>
+
+      {onDelete && (
+        <ConfirmDialog
+          open={isConfirmOpen}
+          onOpenChange={setIsConfirmOpen}
+          title="Supprimer ce message ?"
+          description="Il disparaîtra pour tous les membres du groupe ; seule restera la mention « Message supprimé »."
+          confirmLabel="Supprimer pour tous"
+          onConfirm={() => {
+            setDeleteError(null)
+            void onDelete(message).then(setDeleteError)
+          }}
+        />
+      )}
+      {deleteError && (
+        <p role="alert" className="px-1 text-xs text-destructive">
+          {deleteError}
+        </p>
+      )}
 
       <ReactionChips
         message={message}
@@ -85,6 +121,8 @@ interface ReactionPickerProps {
   isOwn: boolean
   selected?: ReactionEmoji
   onSelect: (emoji: ReactionEmoji) => void
+  /** Modérateur : propose la suppression, à côté des réactions. */
+  onDeleteRequest?: () => void
 }
 
 /** Bouton (au survol, à la souris) et barre de réactions, posée au-dessus du message. */
@@ -95,11 +133,12 @@ function ReactionPicker({
   isOwn,
   selected,
   onSelect,
+  onDeleteRequest,
 }: ReactionPickerProps) {
   return (
     <Popover open={isOpen} onOpenChange={onOpenChange}>
       <PopoverTrigger
-        aria-label="Réagir au message"
+        aria-label={onDeleteRequest ? "Réagir au message ou le supprimer" : "Réagir au message"}
         className={cn(
           // Hors de la bulle, à côté d'elle : la carte garde son dessin intact.
           "absolute top-1/2 hidden size-8 -translate-y-1/2 place-items-center rounded-full text-muted-foreground outline-none pointer-fine:grid",
@@ -115,7 +154,23 @@ function ReactionPicker({
         align={isOwn ? "end" : "start"}
         className="w-auto rounded-full p-1 shadow-lg"
       >
-        <ReactionBar selected={selected} onSelect={onSelect} />
+        <div className="flex items-center">
+          <ReactionBar selected={selected} onSelect={onSelect} />
+          {onDeleteRequest && (
+            <>
+              <span aria-hidden className="mx-1 h-6 w-px bg-border" />
+              <button
+                type="button"
+                aria-label="Supprimer le message pour tous"
+                title="Supprimer pour tous"
+                onClick={onDeleteRequest}
+                className="grid size-10 place-items-center rounded-full text-destructive outline-none transition-colors hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring/50"
+              >
+                <HugeiconsIcon icon={Delete02Icon} size={20} strokeWidth={1.8} />
+              </button>
+            </>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   )

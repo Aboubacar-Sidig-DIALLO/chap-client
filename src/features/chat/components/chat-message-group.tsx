@@ -1,5 +1,7 @@
 "use client"
 
+import { Delete02Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 import { motion } from "motion/react"
 import { AnimateIcon } from "@animate-ui/react/icons"
 import {
@@ -22,7 +24,7 @@ import { getJumboEmojis } from "../lib/emoji"
 import { formatTime } from "../lib/format"
 import type { MessageRun } from "../lib/group-messages"
 import { getMessageReceipt } from "../lib/receipts"
-import type { ChatMessage, ReadReceipt } from "../types"
+import type { ChatMessage, ChatUser, ReadReceipt } from "../types"
 import { Emoji } from "./emoji"
 import { MessageAttachments } from "./message-attachments"
 import { MessageBubble } from "./message-bubble"
@@ -43,6 +45,8 @@ interface ChatMessageGroupProps {
   currentUserId: string
   onRetry: (messageId: string) => void
   onReact: (message: ChatMessage, emoji: ReactionEmoji) => void
+  /** Modérateur du groupe : supprime un message pour tous (renvoie l'erreur éventuelle). */
+  onDelete?: (message: ChatMessage) => Promise<string | null>
 }
 
 /** Messages consécutifs d'un même auteur : un seul avatar (en groupe) et un seul horodatage. */
@@ -56,6 +60,7 @@ export function ChatMessageGroup({
   currentUserId,
   onRetry,
   onReact,
+  onDelete,
 }: ChatMessageGroupProps) {
   const lastMessage = run.messages[run.messages.length - 1]
 
@@ -81,6 +86,7 @@ export function ChatMessageGroup({
             animateIn={historyIds !== null && !historyIds.has(message.id)}
             onRetry={onRetry}
             onReact={onReact}
+            onDelete={onDelete}
           />
         ))}
 
@@ -111,6 +117,7 @@ interface MessageItemProps {
   animateIn: boolean
   onRetry: (messageId: string) => void
   onReact: (message: ChatMessage, emoji: ReactionEmoji) => void
+  onDelete?: (message: ChatMessage) => Promise<string | null>
 }
 
 interface JumboEmojisProps {
@@ -134,6 +141,25 @@ function JumboEmojis({ emojis, label, isPending }: JumboEmojisProps) {
   )
 }
 
+interface DeletedMessageProps {
+  deletedBy: ChatUser
+  isOwn: boolean
+  currentUserId: string
+}
+
+/** Message supprimé par un modérateur : à sa place, qui l'a supprimé. */
+function DeletedMessage({ deletedBy, isOwn, currentUserId }: DeletedMessageProps) {
+  return (
+    <MessageBubble
+      isOwn={isOwn}
+      className="flex items-center gap-1.5 border border-dashed bg-transparent! text-muted-foreground! italic"
+    >
+      <HugeiconsIcon icon={Delete02Icon} size={14} strokeWidth={2} aria-hidden className="shrink-0" />
+      {deletedBy.id === currentUserId ? "Vous avez supprimé ce message" : `Message supprimé par ${deletedBy.name}`}
+    </MessageBubble>
+  )
+}
+
 function MessageItem({
   message,
   isOwn,
@@ -142,12 +168,15 @@ function MessageItem({
   animateIn,
   onRetry,
   onReact,
+  onDelete,
 }: MessageItemProps) {
   const rise = useTempoTransition(spring.entrance)
   const fade = useTempoTransition(transition.fade)
   const jumboEmojis = message.content ? getJumboEmojis(message.content) : null
 
-  const body = (
+  const body = message.deletedBy ? (
+    <DeletedMessage deletedBy={message.deletedBy} isOwn={isOwn} currentUserId={currentUserId} />
+  ) : (
     <>
       {message.attachments.length > 0 && (
         <MessageAttachments message={message} isOwn={isOwn} />
@@ -175,13 +204,14 @@ function MessageItem({
       // quelles que soient les enveloppes intermédiaires (réactions).
       className="@container flex w-full flex-col items-start gap-1 group-data-[align=end]/message:items-end"
     >
-      {/* On ne réagit qu'à un message reçu par le serveur. */}
-      {message.status === "sent" ? (
+      {/* On ne réagit qu'à un message reçu par le serveur, et jamais à un message supprimé. */}
+      {message.status === "sent" && !message.deletedBy ? (
         <ReactableMessage
           message={message}
           isOwn={isOwn}
           currentUserId={currentUserId}
           onReact={onReact}
+          onDelete={onDelete}
         >
           {body}
         </ReactableMessage>

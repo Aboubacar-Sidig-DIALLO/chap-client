@@ -9,7 +9,8 @@ import { CallProvider } from "@/features/call/components/call-provider"
 import { CallStage } from "@/features/call/components/call-stage"
 import { LiveBanner } from "@/features/call/components/live-banner"
 import { LiveButton } from "@/features/call/components/live-button"
-import { GroupInfoDialog } from "@/features/social/components/group-info-dialog"
+import { GroupInfoDialog } from "@/features/social/components/group-info/group-info-dialog"
+import { restrictionNotice } from "@/features/social/lib/group-rights"
 import { useAttachmentDrafts } from "../hooks/use-attachment-drafts"
 import { useChat } from "../hooks/use-chat"
 import { useUnreadTitle } from "../hooks/use-unread-title"
@@ -51,6 +52,7 @@ export function ChatRoom({
   const {
     socket,
     conversationInfo,
+    rights,
     unavailableReason,
     messages,
     isHistoryLoaded,
@@ -71,6 +73,7 @@ export function ChatRoom({
     reportListenProgress,
     markListened,
     toggleReaction,
+    deleteMessage,
   } = useChat(currentUser, conversation, { onUnauthorized: onSessionExpired })
   const attachments = useAttachmentDrafts()
   const router = useRouter()
@@ -82,6 +85,11 @@ export function ChatRoom({
 
   const title = conversationInfo?.title ?? PENDING_TITLE[conversation.type]
   const isDirect = conversation.type === "direct"
+  // Ce que le propriétaire du groupe vous a retiré, avec la raison en clair.
+  const restrictions = {
+    write: restrictionNotice(rights, "write"),
+    voice: restrictionNotice(rights, "voice"),
+  }
   // Entre amis : l'ami et sa présence ; en groupe : qui est là.
   const audience =
     conversation.type === "direct"
@@ -111,14 +119,20 @@ export function ChatRoom({
             Grand écran : remplit le panneau à côté de la barre latérale.
             Les fichiers peuvent être déposés n'importe où dans la conversation. */}
         <FileDropZone
-          onDropFiles={attachments.addFiles}
+          // Déposer un fichier, c'est écrire : sans ce droit, rien n'est ajouté.
+          onDropFiles={restrictions.write ? () => {} : attachments.addFiles}
           className="fixed inset-x-0 top-(--viewport-offset-top) flex h-(--viewport-height) w-full flex-col overflow-hidden bg-background md:relative md:inset-auto md:h-full md:flex-1"
         >
           <ChatHeader
             {...audience}
             title={title}
             connectionStatus={connectionStatus}
-            actions={<LiveButton disabled={connectionStatus !== "connected"} />}
+            actions={
+              <LiveButton
+                disabled={connectionStatus !== "connected"}
+                restriction={restrictionNotice(rights, "call")}
+              />
+            }
           />
           <ConnectionBanner status={connectionStatus} />
           <LiveBanner />
@@ -138,6 +152,7 @@ export function ChatRoom({
               onRead={markAsRead}
               onRetry={retryMessage}
               onReact={toggleReaction}
+              onDelete={rights.moderate ? (message) => deleteMessage(message.id) : undefined}
             />
             <FloatingPlayer />
             <CallMini />
@@ -148,6 +163,7 @@ export function ChatRoom({
             onTyping={notifyTyping}
             onRecordingChange={setRecording}
             attachments={attachments}
+            restrictions={restrictions}
           />
 
           {/* La scène de l'appel recouvre toute la conversation quand elle est ouverte. */}

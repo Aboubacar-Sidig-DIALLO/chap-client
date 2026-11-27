@@ -3,7 +3,7 @@
 import { useRef, useState } from "react"
 import { ApiError } from "@/lib/api"
 import { socialApi } from "../lib/api"
-import type { GroupSummary, PublicUser } from "../types"
+import type { GroupPermissions, GroupSummary, PublicUser } from "../types"
 import { useSocialEvents } from "./use-social-events"
 
 /** `missing` : le groupe n'existe plus, ou vous n'en faites plus partie. */
@@ -54,11 +54,16 @@ export function useGroupDetails(groupId: string) {
     rename: (name: string) => apply(socialApi.renameGroup(groupId, name)),
     setPhoto: (photo: Blob) => apply(socialApi.setGroupPhoto(groupId, photo)),
     removePhoto: () => apply(socialApi.removeGroupPhoto(groupId)),
+    setPermissions: (permissions: GroupPermissions) => apply(socialApi.setGroupPermissions(groupId, permissions)),
     addMembers: (memberIds: string[]) => apply(socialApi.addGroupMembers(groupId, memberIds)),
+    setMemberRole: (userId: string, role: "admin" | "member") =>
+      apply(socialApi.updateGroupMember(groupId, userId, { role })),
+    setMemberPermissions: (userId: string, permissions: GroupPermissions) =>
+      apply(socialApi.updateGroupMember(groupId, userId, { permissions })),
     removeMember: async (userId: string) => {
       await socialApi.removeGroupMember(groupId, userId)
       setGroup((current) => current && { ...current, members: current.members.filter((member) => member.id !== userId) })
     },
-    leave: () => socialApi.leaveGroup(groupId),
+    leave: (successorId?: string) => socialApi.leaveGroup(groupId, successorId),
   }
 }

@@ -13,6 +13,7 @@ import {
   mergeReceipts,
 } from "../lib/receipts"
 import type { Presence } from "@/features/social/types"
+import { FULL_RIGHTS } from "@/features/social/lib/group-rights"
 import { createChatSocket, listen, type ChatSocket } from "../lib/socket"
 import type {
   ActiveUser,
@@ -32,6 +33,9 @@ import type {
 
 /** Délai au-delà duquel un message sans accusé de réception est considéré en échec. */
 const ACK_TIMEOUT_MS = 5000
+/** Suppression restée sans réponse. */
+const DELETE_FAILED = "Le message n'a pas pu être supprimé. Réessayez."
+
 /** Délai d'inactivité après lequel on signale la fin de frappe. */
 const TYPING_IDLE_MS = 2500
 
@@ -159,6 +163,22 @@ export function useChat(
         setActivity(message.author, null)
         acknowledge(message.seq)
       },
+      "message:deleted": ({ messageId, deletedBy }) =>
+        setMessages((previous) =>
+          previous.map((message) =>
+            message.id === messageId
+              ? {
+                  ...message,
+                  content: "",
+                  attachments: [],
+                  reactions: [],
+                  listenedBy: [],
+                  listenProgress: [],
+                  deletedBy,
+                }
+              : message
+          )
+        ),
       "voice:listened": ({ messageId, user }) =>
         setMessages((previous) =>
           previous.map((message) =>
@@ -327,6 +347,20 @@ export function useChat(
     socket.emit("message:react", { messageId: message.id, emoji: next })
   }
 
+  /**
+   * Supprime un message pour tous (modérateurs d'un groupe). La disparition
+   * s'affiche à la confirmation du serveur, diffusée à tous ; renvoie
+   * l'erreur à afficher, ou `null`.
+   */
+  function deleteMessage(messageId: string): Promise<string | null> {
+    return new Promise((resolve) => {
+      socket.timeout(ACK_TIMEOUT_MS).emit("message:delete", messageId, (error, response) => {
+        if (error) resolve(DELETE_FAILED)
+        else resolve(response.ok ? null : response.error)
+      })
+    })
+  }
+
   /** Les pièces jointes doivent déjà avoir été envoyées (`uploadAttachment`). */
   function sendMessage(content: string, attachments: Attachment[] = []) {
     const now = Date.now()
@@ -377,6 +411,8 @@ export function useChat(
     /** Connexion partagée avec le direct (`useCall`). */
     socket,
     conversationInfo,
+    /** Vos droits ici ; tout est permis tant que le serveur ne les a pas donnés. */
+    rights: conversationInfo?.rights ?? FULL_RIGHTS,
     unavailableReason,
     messages,
     isHistoryLoaded,
@@ -398,5 +434,6 @@ export function useChat(
     reportListenProgress,
     markListened,
     toggleReaction,
+    deleteMessage,
   }
 }

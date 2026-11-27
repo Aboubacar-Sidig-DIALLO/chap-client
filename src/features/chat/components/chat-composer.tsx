@@ -1,6 +1,8 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { LockIcon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
 import { AnimatePresence, motion } from "motion/react"
 import { AnimateIcon } from "@animate-ui/react/icons"
 import { ScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade"
@@ -37,7 +39,14 @@ interface ChatComposerProps {
   /** Pièces jointes en cours, gérées par le parent (qui accepte aussi le glisser-déposer). */
   attachments: AttachmentDrafts
   disabled?: boolean
+  /**
+   * Ce que l'utilisateur ne peut pas envoyer dans ce groupe, avec la raison
+   * en clair : l'écrit (texte, fichiers, selfie) ou les vocaux.
+   */
+  restrictions?: { write: string | null; voice: string | null }
 }
+
+const NO_RESTRICTIONS = { write: null, voice: null }
 
 /**
  * Compositeur « la voix d'abord » : au repos, le dock vocal et son orbe ; le
@@ -50,6 +59,7 @@ export function ChatComposer({
   onRecordingChange,
   attachments,
   disabled,
+  restrictions = NO_RESTRICTIONS,
 }: ChatComposerProps) {
   const [value, setValue] = useState("")
   /** Incrémenté à chaque envoi (clic ou Entrée) pour faire s'envoler la flèche. */
@@ -65,15 +75,21 @@ export function ChatComposer({
   const hasContent = value.trim().length > 0 || attachments.attachments.length > 0
   const canSend =
     !disabled && hasContent && !attachments.isUploading && !attachments.hasFailures
+  const canWrite = restrictions.write === null
+  const canSendVoice = restrictions.voice === null
   // Le texte prend la place de la voix tant qu'il y a quelque chose en cours d'écriture
   // (le panneau d'emojis prend le focus hors du champ : il garde aussi le mode texte).
-  const view =
-    isKeyboardOpen ||
-    isEmojiPickerOpen ||
-    value.length > 0 ||
-    attachments.drafts.length > 0
-      ? "text"
-      : "voice"
+  // Une seule des deux permise : elle seule s'affiche.
+  const view = !canSendVoice
+    ? "text"
+    : !canWrite
+      ? "voice"
+      : isKeyboardOpen ||
+          isEmojiPickerOpen ||
+          value.length > 0 ||
+          attachments.drafts.length > 0
+        ? "text"
+        : "voice"
 
   /** Insère l'emoji à la place du curseur (ou de la sélection), et place le curseur après. */
   function insertEmoji(emoji: string) {
@@ -132,7 +148,11 @@ export function ChatComposer({
     attachments.addFiles(files)
   }
 
-  const attachButtons = (
+  // Ni écrit ni vocal : à la place de la saisie, la raison.
+  if (!canWrite && !canSendVoice) return <RestrictedComposer notice={restrictions.write} />
+
+  // Fichiers et selfie comptent comme de l'écrit.
+  const attachButtons = canWrite && (
     <>
       <input
         ref={fileInputRef}
@@ -193,7 +213,7 @@ export function ChatComposer({
               <VoiceDock
                 onSend={onSend}
                 onRecordingChange={onRecordingChange}
-                onOpenKeyboard={() => setIsKeyboardOpen(true)}
+                onOpenKeyboard={canWrite ? () => setIsKeyboardOpen(true) : undefined}
                 leading={attachButtons}
                 disabled={disabled}
               />
@@ -257,6 +277,7 @@ export function ChatComposer({
                   canSend={canSend}
                   disabled={disabled}
                   isUploading={attachments.isUploading}
+                  canSendVoice={canSendVoice}
                   sentCount={sentCount}
                   onBackToVoice={() => setIsKeyboardOpen(false)}
                 />
@@ -266,7 +287,11 @@ export function ChatComposer({
         </AnimatePresence>
       </ReducedMotionConfig>
 
-      <ComposerHint view={view} hasFailures={attachments.hasFailures} />
+      <ComposerHint
+        view={view}
+        hasFailures={attachments.hasFailures}
+        notice={restrictions.write ?? restrictions.voice}
+      />
     </form>
   )
 }
@@ -276,6 +301,8 @@ interface SendButtonProps {
   canSend: boolean
   disabled?: boolean
   isUploading: boolean
+  /** Sans droit aux vocaux, le bouton reste une flèche d'envoi. */
+  canSendVoice: boolean
   sentCount: number
   /** Champ vide : le bouton ramène au dock vocal. */
   onBackToVoice: () => void
@@ -286,10 +313,11 @@ function SendButton({
   canSend,
   disabled,
   isUploading,
+  canSendVoice,
   sentCount,
   onBackToVoice,
 }: SendButtonProps) {
-  const showMic = !hasContent && !isUploading
+  const showMic = canSendVoice && !hasContent && !isUploading
 
   return (
     <Button
@@ -314,14 +342,44 @@ function SendButton({
   )
 }
 
-/** Aide contextuelle, utile avec un clavier et une souris (ou en cas d'échec). */
+/** Le propriétaire du groupe ne vous laisse rien envoyer : la raison, à la place de la saisie. */
+function RestrictedComposer({ notice }: { notice: string | null }) {
+  return (
+    <div className="border-t bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-(--reading-gutter) md:pb-4">
+      <p
+        role="status"
+        className="flex min-h-12 items-center justify-center gap-2 rounded-3xl bg-muted px-4 py-3 text-center text-sm text-muted-foreground"
+      >
+        <HugeiconsIcon icon={LockIcon} size={16} strokeWidth={2} aria-hidden className="shrink-0" />
+        {notice}
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Aide contextuelle, utile avec un clavier et une souris ; en cas d'échec ou
+ * de restriction, l'explication, visible partout.
+ */
 function ComposerHint({
   view,
   hasFailures,
+  notice,
 }: {
   view: "voice" | "text"
   hasFailures: boolean
+  /** Ce que vous ne pouvez pas envoyer ici, et pourquoi. */
+  notice: string | null
 }) {
+  if (notice && !hasFailures) {
+    return (
+      <p role="status" className="mt-1.5 flex items-center justify-center gap-1.5 px-3 text-center text-xs text-muted-foreground sm:text-[11px]">
+        <HugeiconsIcon icon={LockIcon} size={12} strokeWidth={2} aria-hidden className="shrink-0" />
+        {notice}
+      </p>
+    )
+  }
+
   if (hasFailures) {
     return (
       <p role="alert" className="mt-1.5 px-3 text-xs text-destructive sm:px-4 sm:text-[11px]">

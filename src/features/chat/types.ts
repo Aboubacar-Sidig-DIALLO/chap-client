@@ -1,4 +1,5 @@
 import type { CallSummary } from "@/features/call/types"
+import type { ConversationRights } from "@/features/social/types"
 import type { ReactionEmoji } from "./lib/config"
 
 /** État d'envoi local d'un message (côté expéditeur). */
@@ -70,6 +71,8 @@ export interface ServerMessage {
   reactions: Reaction[]
   /** Trace d'un direct terminé (message déposé par le serveur, au nom de celui qui l'a lancé). */
   call?: CallSummary
+  /** Supprimé par un modérateur du groupe : contenu effacé, seule reste cette mention. */
+  deletedBy?: ChatUser
 }
 
 export interface Reaction {
@@ -127,6 +130,8 @@ export interface ConversationInfo {
   title: string
   /** Photo du groupe, relative à l'API ; `null` sinon. */
   photoUrl: string | null
+  /** Ce que l'utilisateur peut y faire (écrire, parler, appeler, modérer). */
+  rights: ConversationRights
 }
 
 /** Pourquoi la conversation n'est pas (ou plus) accessible. */

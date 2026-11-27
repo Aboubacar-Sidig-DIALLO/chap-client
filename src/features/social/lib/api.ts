@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api"
-import type { FriendsOverview, GroupSummary, Relation, SearchResult } from "../types"
+import type { FriendsOverview, GroupPermissions, GroupSummary, Relation, SearchResult } from "../types"
 
 /** Appels à l'API sociale (`sse/src/social`). */
 export const socialApi = {
@@ -23,7 +23,7 @@ export const socialApi = {
 
   getGroup: (groupId: string) => apiFetch<GroupSummary>(groupPath(groupId)),
 
-  /** Propriétaire uniquement, comme toutes les modifications ci-dessous. */
+  /** Propriétaire uniquement, comme les modifications ci-dessous (sauf mention contraire). */
   renameGroup: (groupId: string, name: string) =>
     apiFetch<GroupSummary>(groupPath(groupId), { method: "PATCH", body: { name } }),
 
@@ -36,14 +36,31 @@ export const socialApi = {
   removeGroupPhoto: (groupId: string) =>
     apiFetch<GroupSummary>(`${groupPath(groupId)}/photo`, { method: "DELETE" }),
 
+  /** Ce que tous les simples membres peuvent faire. */
+  setGroupPermissions: (groupId: string, permissions: GroupPermissions) =>
+    apiFetch<GroupSummary>(`${groupPath(groupId)}/permissions`, { method: "PUT", body: permissions }),
+
+  /** Propriétaire ou administrateur. */
   addGroupMembers: (groupId: string, memberIds: string[]) =>
     apiFetch<GroupSummary>(`${groupPath(groupId)}/members`, { method: "POST", body: { memberIds } }),
 
   removeGroupMember: (groupId: string, userId: string) =>
     apiFetch<void>(`${groupPath(groupId)}/members/${encodeURIComponent(userId)}`, { method: "DELETE" }),
 
-  /** Le propriétaire qui part passe la main au membre le plus ancien. */
-  leaveGroup: (groupId: string) => apiFetch<void>(`${groupPath(groupId)}/membership`, { method: "DELETE" }),
+  /** Nomme ou destitue un administrateur, ou règle les restrictions d'un membre. */
+  updateGroupMember: (
+    groupId: string,
+    userId: string,
+    update: { role: "admin" | "member" } | { permissions: GroupPermissions }
+  ) =>
+    apiFetch<GroupSummary>(`${groupPath(groupId)}/members/${encodeURIComponent(userId)}`, {
+      method: "PATCH",
+      body: update,
+    }),
+
+  /** Tout membre ; le propriétaire désigne son successeur (`successorId`) s'il reste quelqu'un. */
+  leaveGroup: (groupId: string, successorId?: string) =>
+    apiFetch<void>(`${groupPath(groupId)}/leave`, { method: "POST", body: { successorId } }),
 }
 
 function groupPath(groupId: string) {

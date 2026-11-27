@@ -44,6 +44,8 @@ interface MessageListProps {
   onRead: (seq: number) => void
   onRetry: (messageId: string) => void
   onReact: (message: ChatMessage, emoji: ReactionEmoji) => void
+  /** Modérateur du groupe : supprime un message pour tous (renvoie l'erreur éventuelle). */
+  onDelete?: (message: ChatMessage) => Promise<string | null>
 }
 
 export function MessageList({
@@ -58,6 +60,7 @@ export function MessageList({
   onRead,
   onRetry,
   onReact,
+  onDelete,
 }: MessageListProps) {
   const sections = groupMessages(messages)
   const lastMessage = messages[messages.length - 1]
@@ -148,6 +151,7 @@ export function MessageList({
                               currentUserId={currentUserId}
                               onRetry={onRetry}
                               onReact={onReact}
+                              onDelete={onDelete}
                             />
                           )
                         })}

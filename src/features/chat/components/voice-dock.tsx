@@ -50,8 +50,8 @@ interface VoiceDockProps {
   onSend: (content: string, attachments: Attachment[]) => void
   /** Prévient les autres participants qu'un vocal s'enregistre. */
   onRecordingChange?: (isRecording: boolean) => void
-  /** Passe au clavier (message écrit). */
-  onOpenKeyboard: () => void
+  /** Passe au clavier (message écrit) ; absent si l'écrit est interdit. */
+  onOpenKeyboard?: () => void
   /** Boutons secondaires à gauche au repos (pièce jointe, selfie). */
   leading: React.ReactNode
   disabled?: boolean
@@ -267,7 +267,7 @@ export function VoiceDock({
           />
 
           <DockSide side="right" view={view}>
-            {view === "idle" && (
+            {view === "idle" && onOpenKeyboard && (
               <Button
                 type="button"
                 variant="ghost"
