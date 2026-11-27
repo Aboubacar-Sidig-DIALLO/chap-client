@@ -13,6 +13,7 @@ import type {
   ListenProgress,
   Reaction,
   ReadReceipt,
+  ReplyRef,
   ServerMessage,
   UserActivity,
   ViewOnceFile,
@@ -97,7 +98,13 @@ interface ServerToClientEvents {
 
 interface ClientToServerEvents {
   "message:send": (
-    payload: { id: string; content: string; attachmentIds: string[]; viewOnce?: boolean },
+    payload: {
+      id: string
+      content: string
+      attachmentIds: string[]
+      viewOnce?: boolean
+      replyTo?: ReplyRef
+    },
     ack: (response: SendMessageAck) => void
   ) => void
   /** Ouvre un message à vue unique (une seule fois). */
@@ -123,8 +130,12 @@ interface ClientToServerEvents {
   "voice:listening": (messageId: string | null) => void
   /** `percent` % du vocal `messageId` ont été écoutés (entier de 0 à 100). */
   "voice:progress": (payload: { messageId: string; percent: number }) => void
-  /** Réagit à un message, ou retire sa réaction (`null`). */
-  "message:react": (payload: { messageId: string; emoji: ReactionEmoji | null }) => void
+  /** Réagit à un message, ou retire sa réaction (`null`) ; `atMs` : sur un moment de son vocal. */
+  "message:react": (payload: {
+    messageId: string
+    emoji: ReactionEmoji | null
+    atMs?: number
+  }) => void
   /** Rejoint le direct ; la réponse liste les participants à qui se connecter. */
   "call:join": (media: CallMedia, ack: (response: CallJoinAck) => void) => void
   /** Quitte le direct ; entre amis, raccroche (l'appel prend fin pour les deux). */

@@ -18,7 +18,8 @@ import { cn } from "@/lib/utils"
 import { useLongPress } from "../hooks/use-long-press"
 import { REACTION_EMOJIS, type ReactionEmoji } from "../lib/config"
 import { formatNameList } from "../lib/format"
-import type { ChatMessage, ChatUser } from "../types"
+import { formatMoment } from "../lib/replies"
+import type { ChatMessage } from "../types"
 import { Emoji } from "./emoji"
 import type { MessageActions, MessageRemoval } from "./message-actions"
 import { MessageMenu } from "./message-menu"
@@ -32,6 +33,8 @@ interface ReactableMessageProps {
   actions: MessageActions | null
   /** Ouvre l'édition du texte, sur place. */
   onEditRequest: () => void
+  /** Action toujours visible à côté de la bulle, au plus près d'elle (répondre). */
+  sideAction?: React.ReactNode
   children: React.ReactNode
 }
 
@@ -58,6 +61,7 @@ export function ReactableMessage({
   onReact,
   actions,
   onEditRequest,
+  sideAction,
   children,
 }: ReactableMessageProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -91,17 +95,26 @@ export function ReactableMessage({
       >
         {children}
         <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger
-            aria-label={actions?.removal ? "Réagir ou agir sur le message" : "Réagir au message"}
+          {/* À côté de la bulle (hors d'elle : la carte garde son dessin intact) :
+              l'action propre au message (répondre), toujours là, puis, au survol
+              de la souris, le bouton des réactions. Au doigt, l'appui long ouvre ce menu. */}
+          <div
             className={cn(
-              // Hors de la bulle, à côté d'elle : la carte garde son dessin intact.
-              "absolute top-1/2 hidden size-8 -translate-y-1/2 place-items-center rounded-full text-muted-foreground outline-none pointer-fine:grid",
-              "opacity-0 transition-opacity group-hover/reactable:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:opacity-100",
-              isOwn ? "right-full mr-1" : "left-full ml-1"
+              "absolute top-1/2 flex -translate-y-1/2 items-center gap-0.5",
+              isOwn ? "right-full mr-1 flex-row-reverse" : "left-full ml-1"
             )}
           >
-            <HugeiconsIcon icon={SmilePlusIcon} size={18} strokeWidth={1.8} />
-          </PopoverTrigger>
+            {sideAction}
+            <PopoverTrigger
+              aria-label={actions?.removal ? "Réagir ou agir sur le message" : "Réagir au message"}
+              className={cn(
+                "hidden size-8 place-items-center rounded-full text-muted-foreground outline-none pointer-fine:grid",
+                "opacity-0 transition-opacity group-hover/reactable:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:opacity-100"
+              )}
+            >
+              <HugeiconsIcon icon={SmilePlusIcon} size={18} strokeWidth={1.8} />
+            </PopoverTrigger>
+          </div>
           <PopoverContent
             anchor={anchorRef}
             side="top"
@@ -199,20 +212,25 @@ export function ReactionBar({ selected, onSelect }: ReactionBarProps) {
 
 interface ReactionGroup {
   emoji: ReactionEmoji
-  users: ChatUser[]
+  /** « Léa », ou « Léa à 0:42 » pour une réaction posée sur un moment du vocal. */
+  names: string[]
   isMine: boolean
 }
 
-/** Réactions regroupées par emoji, les plus nombreuses d'abord. */
+/** Réactions regroupées par emoji (sur tout le message ou sur un moment), les plus nombreuses d'abord. */
 function groupReactions(message: ChatMessage, currentUserId: string): ReactionGroup[] {
   return REACTION_EMOJIS.map((emoji) => {
-    const users = message.reactions
-      .filter((item) => item.emoji === emoji)
-      .map((item) => item.user)
-    return { emoji, users, isMine: users.some((user) => user.id === currentUserId) }
+    const reactions = message.reactions.filter((item) => item.emoji === emoji)
+    return {
+      emoji,
+      names: reactions.map(({ user, atMs }) =>
+        atMs === undefined ? user.name : `${user.name} ${formatMoment(atMs)}`
+      ),
+      isMine: reactions.some((item) => item.user.id === currentUserId),
+    }
   })
-    .filter((group) => group.users.length > 0)
-    .sort((a, b) => b.users.length - a.users.length)
+    .filter((group) => group.names.length > 0)
+    .sort((a, b) => b.names.length - a.names.length)
 }
 
 interface ReactionChipsProps {
@@ -236,8 +254,9 @@ function ReactionChips({ message, currentUserId, onToggle }: ReactionChipsProps)
         className={cn("relative z-10 flex flex-wrap gap-1 px-2", groups.length > 0 && "-mt-2")}
       >
         <AnimatePresence mode="popLayout" initial={false}>
-          {groups.map(({ emoji, users, isMine }) => {
-            const names = formatNameList(users.map((user) => user.name))
+          {groups.map(({ emoji, names: reactors, isMine }) => {
+            const count = reactors.length
+            const names = formatNameList(reactors)
             return (
               <motion.li
                 key={emoji}
@@ -250,7 +269,7 @@ function ReactionChips({ message, currentUserId, onToggle }: ReactionChipsProps)
                 <button
                   type="button"
                   aria-pressed={isMine}
-                  aria-label={`${emoji} ${users.length} : ${names}${isMine ? " (vous)" : ""}`}
+                  aria-label={`${emoji} ${count} : ${names}${isMine ? " (vous)" : ""}`}
                   title={names}
                   onClick={() => onToggle(emoji)}
                   className={cn(
@@ -260,9 +279,9 @@ function ReactionChips({ message, currentUserId, onToggle }: ReactionChipsProps)
                   )}
                 >
                   <Emoji emoji={emoji} size={15} />
-                  {users.length > 1 && (
+                  {count > 1 && (
                     <span className="tabular-nums">
-                      <SlidingNumber number={users.length} />
+                      <SlidingNumber number={count} />
                     </span>
                   )}
                 </button>

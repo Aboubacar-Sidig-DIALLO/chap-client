@@ -27,6 +27,7 @@ import { FileDropZone } from "./file-drop-zone"
 import { FloatingPlayer } from "./floating-player"
 import { MessageActionsProvider } from "./message-actions"
 import { MessageList } from "./message-list"
+import { ReplyProvider } from "./reply-provider"
 import { VoicePlaybackProvider } from "./voice-playback"
 
 /** Titre affiché le temps que le serveur confirme la conversation. */
@@ -129,86 +130,94 @@ export function ChatRoom({
         onListenProgress={reportListenProgress}
         onListened={markListened}
       >
-        {/* Talkie-walkie : maintenir le micro, c'est parler en direct à ceux qui sont là. */}
-        <TalkieProvider socket={socket} currentUserId={currentUser.id} onlineUsers={onlineUsers}>
-          {/* Mobile : calé sur la zone visible, en-tête et saisie restent à l'écran même clavier ouvert.
-              Grand écran : remplit le panneau à côté de la barre latérale.
-              Les fichiers peuvent être déposés n'importe où dans la conversation. */}
-          <FileDropZone
-            // Déposer un fichier, c'est écrire : sans ce droit, rien n'est ajouté.
-            onDropFiles={restrictions.write ? () => {} : attachments.addFiles}
-            className="fixed inset-x-0 top-(--viewport-offset-top) flex h-(--viewport-height) w-full flex-col overflow-hidden bg-background md:relative md:inset-auto md:h-full md:flex-1"
-          >
-            <ChatHeader
-              {...audience}
-              title={title}
-              connectionStatus={connectionStatus}
-              actions={
-                <LiveButton
-                  disabled={connectionStatus !== "connected"}
-                  restriction={restrictionNotice(rights, "call")}
-                />
-              }
-            />
-            <ConnectionBanner status={connectionStatus} />
-            <LiveBanner />
-
-            {/* Zone des messages : mini-lecteur et mini-direct flottent à l'intérieur,
-                sans couvrir l'en-tête ni l'orbe. */}
-            <div className="relative flex min-h-0 flex-1 flex-col">
-              <MessageActionsProvider
-                value={{
-                  currentUserId: currentUser.id,
-                  receipts,
-                  canModerate: rights.moderate,
-                  edit: editMessage,
-                  unsend: unsendMessage,
-                  removeAttachment,
-                  moderate: deleteMessage,
-                  openViewOnce,
-                }}
-              >
-                <MessageList
-                  messages={messages}
-                  isHistoryLoaded={isHistoryLoaded}
-                  currentUserId={currentUser.id}
-                  isDirect={isDirect}
-                  activeUsers={activeUsers}
-                  receipts={receipts}
-                  unreadCount={unreadCount}
-                  latestIncomingSeq={latestIncomingSeq}
-                  onRead={markAsRead}
-                  onRetry={retryMessage}
-                  onReact={toggleReaction}
-                />
-              </MessageActionsProvider>
-              <FloatingPlayer />
-              <CallMini />
-            </div>
-
-            <ChatComposer
-              onSend={sendMessage}
-              onTyping={notifyTyping}
-              onRecordingChange={setRecording}
-              attachments={attachments}
-              restrictions={restrictions}
-            />
-
-            {/* La scène de l'appel recouvre toute la conversation quand elle est ouverte. */}
-            <CallStage />
-
-            {conversation.type === "group" && (
-              <GroupInfoDialog
-                groupId={conversation.groupId}
-                currentUserId={currentUser.id}
-                open={isGroupInfoOpen}
-                onOpenChange={setIsGroupInfoOpen}
-                // Plus membre : la conversation se ferme, on revient à l'accueil.
-                onLeft={() => router.push(ROUTES.home)}
+        {/* Répondre à un message ou à un passage d'un vocal : partagé par la liste et la saisie. */}
+        <ReplyProvider
+          messages={messages}
+          currentUserId={currentUser.id}
+          canReply={!restrictions.write || !restrictions.voice}
+        >
+          {/* Talkie-walkie : maintenir le micro, c'est parler en direct à ceux qui sont là. */}
+          <TalkieProvider socket={socket} currentUserId={currentUser.id} onlineUsers={onlineUsers}>
+            {/* Mobile : calé sur la zone visible, en-tête et saisie restent à l'écran même clavier ouvert.
+                Grand écran : remplit le panneau à côté de la barre latérale.
+                Les fichiers peuvent être déposés n'importe où dans la conversation. */}
+            <FileDropZone
+              // Déposer un fichier, c'est écrire : sans ce droit, rien n'est ajouté.
+              onDropFiles={restrictions.write ? () => {} : attachments.addFiles}
+              className="fixed inset-x-0 top-(--viewport-offset-top) flex h-(--viewport-height) w-full flex-col overflow-hidden bg-background md:relative md:inset-auto md:h-full md:flex-1"
+            >
+              <ChatHeader
+                {...audience}
+                title={title}
+                connectionStatus={connectionStatus}
+                actions={
+                  <LiveButton
+                    disabled={connectionStatus !== "connected"}
+                    restriction={restrictionNotice(rights, "call")}
+                  />
+                }
               />
-            )}
-          </FileDropZone>
-        </TalkieProvider>
+              <ConnectionBanner status={connectionStatus} />
+              <LiveBanner />
+
+              {/* Zone des messages : mini-lecteur et mini-direct flottent à l'intérieur,
+                  sans couvrir l'en-tête ni l'orbe. */}
+              <div className="relative flex min-h-0 flex-1 flex-col">
+                <MessageActionsProvider
+                  value={{
+                    currentUserId: currentUser.id,
+                    receipts,
+                    canModerate: rights.moderate,
+                    edit: editMessage,
+                    unsend: unsendMessage,
+                    removeAttachment,
+                    moderate: deleteMessage,
+                    openViewOnce,
+                    react: toggleReaction,
+                  }}
+                >
+                  <MessageList
+                    messages={messages}
+                    isHistoryLoaded={isHistoryLoaded}
+                    currentUserId={currentUser.id}
+                    isDirect={isDirect}
+                    activeUsers={activeUsers}
+                    receipts={receipts}
+                    unreadCount={unreadCount}
+                    latestIncomingSeq={latestIncomingSeq}
+                    onRead={markAsRead}
+                    onRetry={retryMessage}
+                    onReact={toggleReaction}
+                  />
+                </MessageActionsProvider>
+                <FloatingPlayer />
+                <CallMini />
+              </div>
+
+              <ChatComposer
+                onSend={sendMessage}
+                onTyping={notifyTyping}
+                onRecordingChange={setRecording}
+                attachments={attachments}
+                restrictions={restrictions}
+              />
+
+              {/* La scène de l'appel recouvre toute la conversation quand elle est ouverte. */}
+              <CallStage />
+
+              {conversation.type === "group" && (
+                <GroupInfoDialog
+                  groupId={conversation.groupId}
+                  currentUserId={currentUser.id}
+                  open={isGroupInfoOpen}
+                  onOpenChange={setIsGroupInfoOpen}
+                  // Plus membre : la conversation se ferme, on revient à l'accueil.
+                  onLeft={() => router.push(ROUTES.home)}
+                />
+              )}
+            </FileDropZone>
+          </TalkieProvider>
+        </ReplyProvider>
       </VoicePlaybackProvider>
     </CallProvider>
   )

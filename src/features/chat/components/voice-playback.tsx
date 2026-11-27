@@ -16,6 +16,10 @@ import type { ChatMessage, ChatUser, LiveListener } from "../types"
 export interface PlayerControls {
   play: () => void
   pause: () => void
+  /** Se place à `ms` du début. */
+  seekTo: (ms: number) => void
+  /** Position actuelle (ms). */
+  getPositionMs: () => number
   /** Fait défiler la conversation jusqu'au lecteur. */
   reveal: () => void
 }
@@ -58,6 +62,16 @@ interface VoicePlaybackContextValue {
   handleEnded: (attachmentId: string) => void
   /** Position atteinte pendant la lecture (de 0 à 1). */
   handleProgress: (attachmentId: string, ratio: number) => void
+  /**
+   * Écoute le vocal d'un message à partir de `atMs` (moment cité par une
+   * réponse ou une réaction). `false` si son lecteur n'est pas à l'écran.
+   */
+  playFrom: (messageId: string, atMs: number) => boolean
+  /**
+   * Où en est l'écoute du vocal d'un message (ms), s'il a été entamé (en
+   * cours ou en pause) ; `null` s'il est au début. Lu à la demande.
+   */
+  getPosition: (messageId: string) => number | null
   /** Met en pause ou relance le vocal en cours (mini-lecteur). */
   toggleNowPlaying: () => void
   /** Arrête le vocal en cours et ferme le mini-lecteur. */
@@ -297,6 +311,28 @@ export function VoicePlaybackProvider({
     }
   }
 
+  function playerOf(messageId: string) {
+    const item = queue.find((entry) => entry.message.id === messageId)
+    return item ? playersRef.current.get(item.attachmentId) : undefined
+  }
+
+  function playFrom(messageId: string, atMs: number) {
+    const player = playerOf(messageId)
+    if (!player) return false
+
+    // Un saut volontaire interrompt la lecture enchaînée.
+    setSequence(null)
+    player.reveal()
+    player.seekTo(atMs)
+    player.play()
+    return true
+  }
+
+  function getPosition(messageId: string) {
+    const ms = playerOf(messageId)?.getPositionMs() ?? 0
+    return ms > 0 ? Math.round(ms) : null
+  }
+
   function toggleNowPlaying() {
     if (!nowPlaying) return
     const player = playersRef.current.get(nowPlaying.attachmentId)
@@ -334,6 +370,8 @@ export function VoicePlaybackProvider({
         handlePause,
         handleEnded,
         handleProgress,
+        playFrom,
+        getPosition,
         toggleNowPlaying,
         stop,
         getLevel: readers.getLevel,

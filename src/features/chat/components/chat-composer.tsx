@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useEffectEvent, useRef, useState } from "react"
 import { LockIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AnimatePresence, LayoutGroup, motion } from "motion/react"
@@ -28,6 +28,8 @@ import { COMPOSER_LAYOUT_IDS } from "../lib/composer-layout"
 import type { Attachment, SendOptions } from "../types"
 import { AttachmentDraftList } from "./attachment-draft-list"
 import { EmojiPickerButton } from "./emoji-picker-button"
+import { useReply } from "./reply-provider"
+import { ReplyDraftBar } from "./reply-quote"
 import { SelfieDialog } from "./selfie-dialog"
 import { ViewOnceIcon, ViewOnceToggle } from "./view-once-icon"
 import { VoiceDock } from "./voice-dock"
@@ -81,6 +83,7 @@ export function ChatComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const isTouchDevice = useIsTouchDevice()
+  const { draft: replyDraft, cancelReply } = useReply()
   const [contentRef, contentHeight] = useElementHeight<HTMLDivElement>()
   const swap = useTempoTransition(transition.swap)
   const fade = useTempoTransition(transition.fade)
@@ -124,18 +127,42 @@ export function ChatComposer({
     if (!open) setIsKeyboardOpen(true)
   }
 
+  // Nouvelle réponse préparée : à la souris et au clavier, on l'écrit aussitôt.
+  // Au doigt, la voix reste au premier plan : on maintient l'orbe pour répondre.
+  const replyKey = replyDraft && `${replyDraft.message.id}:${replyDraft.atMs ?? ""}`
+  const [seenReplyKey, setSeenReplyKey] = useState(replyKey)
+  if (replyKey !== seenReplyKey) {
+    setSeenReplyKey(replyKey)
+    if (replyKey && !isTouchDevice && canWrite) setIsKeyboardOpen(true)
+  }
+  const focusField = useEffectEvent(() => {
+    if (!isTouchDevice && canWrite) textareaRef.current?.focus()
+  })
+  useEffect(() => {
+    if (replyKey) focusField()
+  }, [replyKey])
+
   /**
-   * Tout envoi passe par ici (texte, fichiers, vocal, selfie). Vue unique
+   * Tout envoi passe par ici (texte, fichiers, vocal, selfie). Une réponse
+   * en préparation part avec le premier message, puis se referme. Vue unique
    * armée : elle s'applique aux pièces jointes (un éventuel texte part à
    * côté, normalement), puis se désarme.
    */
   function send(content: string, files: Attachment[], options: SendOptions = {}) {
+    const replyTo = replyDraft
+      ? {
+          messageId: replyDraft.message.id,
+          ...(replyDraft.atMs !== undefined && { atMs: replyDraft.atMs }),
+        }
+      : undefined
+    if (replyDraft) cancelReply()
+
     if (!isViewOnce || files.length === 0) {
-      onSend(content, files, options)
+      onSend(content, files, { ...options, replyTo })
       return
     }
-    if (content) onSend(content, [])
-    onSend("", files, { ...options, viewOnce: true })
+    if (content) onSend(content, [], { replyTo })
+    onSend("", files, { ...options, viewOnce: true, ...(!content && { replyTo }) })
     setIsViewOnce(false)
   }
 
@@ -153,6 +180,12 @@ export function ChatComposer({
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Échap abandonne la réponse en préparation (le texte reste).
+    if (event.key === "Escape" && replyDraft) {
+      event.preventDefault()
+      cancelReply()
+      return
+    }
     // Au clavier physique : Entrée envoie, Maj + Entrée insère un saut de ligne.
     // Sur écran tactile (pas de touche Maj), Entrée insère un saut de ligne et
     // l'envoi se fait par le bouton, comme dans les messageries mobiles.
@@ -253,6 +286,21 @@ export function ChatComposer({
         {/* La hauteur suit le mode affiché (et le texte qui s'allonge), en douceur. */}
         <motion.div initial={false} animate={{ height: contentHeight ?? "auto" }} transition={resize}>
           <div ref={contentRef} className="relative">
+            {/* La réponse en préparation, au-dessus de la saisie comme de l'orbe :
+                on y répond en écrivant ou en parlant. La hauteur suit (ci-dessus). */}
+            <AnimatePresence initial={false}>
+              {replyDraft && (
+                <motion.div
+                  key="reply"
+                  initial={{ opacity: 0, y: 6, filter: blur.icon }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)", transition: swap }}
+                  exit={{ opacity: 0, y: 6, filter: blur.icon, transition: swap }}
+                  className="pb-2"
+                >
+                  <ReplyDraftBar draft={replyDraft} onCancel={cancelReply} />
+                </motion.div>
+              )}
+            </AnimatePresence>
             <LayoutGroup id="composer">
               <AnimatePresence mode="popLayout" initial={false}>
                 {view === "voice" ? (

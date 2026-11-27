@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, use } from "react"
+import type { ReactionEmoji } from "../lib/config"
 import { isSeenByOthers } from "../lib/receipts"
 import type { ViewOnceOpenAck } from "../lib/socket"
 import type { Attachment, ChatMessage, ReadReceipt } from "../types"
@@ -20,6 +21,8 @@ interface MessageActionsValue {
   moderate: (messageId: string) => MessageRequest
   /** Ouvre un message à vue unique reçu (une seule fois). */
   openViewOnce: (messageId: string) => Promise<ViewOnceOpenAck>
+  /** Réagit au message, ou à un moment de son vocal (`atMs`) ; la même réaction la retire. */
+  react: (message: ChatMessage, emoji: ReactionEmoji, atMs?: number) => void
 }
 
 const MessageActionsContext = createContext<MessageActionsValue | null>(null)
@@ -38,6 +41,12 @@ export function MessageActionsProvider({
 /** Ouvre un message à vue unique reçu ; `null` hors d'une conversation. */
 export function useOpenViewOnce() {
   return use(MessageActionsContext)?.openViewOnce ?? null
+}
+
+/** De quoi réagir à un message (ou à un moment de son vocal) ; `null` hors d'une conversation. */
+export function useReactions() {
+  const context = use(MessageActionsContext)
+  return context && { currentUserId: context.currentUserId, react: context.react }
 }
 
 /**

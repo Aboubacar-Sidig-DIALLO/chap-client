@@ -96,6 +96,21 @@
     }
   }
 
+  /* Message retrouvé depuis une citation : il s'éclaire, puis s'éteint doucement. */
+  --animate-reply-flash: reply-flash 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+
+  @keyframes reply-flash {
+    0%,
+    25% {
+      background-color: color-mix(in oklch, var(--voice) 14%, transparent);
+      box-shadow: 0 0 0 6px color-mix(in oklch, var(--voice) 14%, transparent);
+    }
+    100% {
+      background-color: transparent;
+      box-shadow: 0 0 0 6px transparent;
+    }
+  }
+
   @keyframes voice-bar {
     0%,
     100% {
@@ -333,9 +348,10 @@
 }
 
 /* Les animations Motion gèrent elles-mêmes « réduire les animations » (ReducedMotionConfig) ;
- * ceci couvre le CSS restant. Les indicateurs de chargement continuent, plus lentement (règle A4). */
+ * ceci couvre le CSS restant. Les indicateurs de chargement continuent, plus lentement (règle A4).
+ * Le message retrouvé depuis une citation garde sa lueur : un fondu de couleur, sans mouvement. */
 @media (prefers-reduced-motion: reduce) {
-  *:not([data-slot="spinner"]),
+  *:not([data-slot="spinner"], [data-flash]),
   *::before,
   *::after {
     animation-duration: 0.01ms !important;

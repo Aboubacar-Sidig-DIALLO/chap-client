@@ -69,6 +69,8 @@ export interface ServerMessage {
   listenProgress: ListenProgress[]
   /** Une réaction au plus par participant. */
   reactions: Reaction[]
+  /** Le message auquel celui-ci répond (et, pour un vocal, à quel moment). */
+  replyTo?: ReplyRef
   /** Trace d'un direct terminé (message déposé par le serveur, au nom de celui qui l'a lancé). */
   call?: CallSummary
   /** Supprimé par un modérateur du groupe : contenu effacé, seule reste cette mention. */
@@ -111,6 +113,18 @@ export interface ViewOnceFile {
 export interface Reaction {
   user: ChatUser
   emoji: ReactionEmoji
+  /** Posée sur un moment précis du vocal (ms depuis son début) ; absente : sur tout le message. */
+  atMs?: number
+}
+
+/**
+ * Référence au message cité, jamais une copie : il est retrouvé dans la
+ * conversation, et un message retiré ou supprimé ne survit pas dans ses réponses.
+ */
+export interface ReplyRef {
+  messageId: string
+  /** Moment précis du vocal cité (ms depuis son début). */
+  atMs?: number
 }
 
 /** Part d'un vocal déjà entendue par un participant (ne recule jamais). */
@@ -126,6 +140,8 @@ export interface SendOptions {
   id?: string
   /** Pièces jointes à vue unique : chaque destinataire ne les ouvre qu'une fois. */
   viewOnce?: boolean
+  /** Le message auquel on répond (et, pour un vocal, à quel moment). */
+  replyTo?: ReplyRef
 }
 
 /** Ce qu'un participant est en train de faire. */

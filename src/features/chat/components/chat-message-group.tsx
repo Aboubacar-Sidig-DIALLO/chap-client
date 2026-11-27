@@ -27,6 +27,7 @@ import { getJumboEmojis } from "../lib/emoji"
 import { formatTime } from "../lib/format"
 import type { MessageRun } from "../lib/group-messages"
 import { getMessageReceipt } from "../lib/receipts"
+import { messageElementId } from "../lib/replies"
 import type { ChatMessage, ChatUser, ReadReceipt } from "../types"
 import { Emoji } from "./emoji"
 import { useMessageActions } from "./message-actions"
@@ -35,6 +36,8 @@ import { MessageBubble } from "./message-bubble"
 import { MessageEditor } from "./message-editor"
 import { ReactableMessage } from "./message-reactions"
 import { MessageReceiptStatus } from "./message-receipt-status"
+import { ReplyButton } from "./reply-button"
+import { ReplyQuote } from "./reply-quote"
 import { UserAvatar } from "./user-avatar"
 import { ViewOnceMessage } from "./view-once-message"
 
@@ -197,14 +200,20 @@ function MessageItem({
   // Vu entre-temps par un autre : l'édition se referme d'elle-même.
   const showEditor = isEditing && actions?.canEdit === true
 
-  const { viewOnce } = message
+  const { viewOnce, replyTo } = message
+  // Une réponse : le message (ou le passage du vocal) cité, au-dessus.
+  const quote = replyTo && <ReplyQuote reply={replyTo} isOwn={isOwn} />
   const body = message.deletedBy ? (
     <DeletedMessage deletedBy={message.deletedBy} isOwn={isOwn} currentUserId={currentUserId} />
   ) : viewOnce ? (
     // Vue unique : une carte à ouvrir une fois, jamais le contenu lui-même.
-    <ViewOnceMessage message={{ ...message, viewOnce }} isOwn={isOwn} currentUserId={currentUserId} />
+    <>
+      {quote}
+      <ViewOnceMessage message={{ ...message, viewOnce }} isOwn={isOwn} currentUserId={currentUserId} />
+    </>
   ) : (
     <>
+      {quote}
       {message.attachments.length > 0 && (
         <MessageAttachments message={message} isOwn={isOwn} />
       )}
@@ -234,6 +243,8 @@ function MessageItem({
 
   return (
     <motion.div
+      // Cible du retour depuis une citation, qui le fait briller un instant (`data-flash`).
+      id={messageElementId(message.id)}
       initial={animateIn ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0, transition: { ...rise, opacity: fade } }}
       // Retiré par son auteur : il se replie sur place (rogné et inerte le temps de sa sortie).
@@ -244,7 +255,7 @@ function MessageItem({
       title={formatTime(message.createdAt)}
       // `@container` : la colonne de référence des largeurs max. des bulles et cartes (`cqw`),
       // quelles que soient les enveloppes intermédiaires (réactions).
-      className="@container flex w-full flex-col items-start gap-1 group-data-[align=end]/message:items-end"
+      className="@container flex w-full scroll-my-24 flex-col items-start gap-1 rounded-2xl group-data-[align=end]/message:items-end data-flash:animate-reply-flash"
     >
       {/* Supprimé par un modérateur : le message laisse place à sa mention, en fondu. */}
       <Swap swapKey={message.deletedBy ? "deleted" : "message"} className={SLOT_CLASS}>
@@ -257,6 +268,7 @@ function MessageItem({
           onReact={onReact}
           actions={actions}
           onEditRequest={() => setIsEditing(true)}
+          sideAction={<ReplyButton message={message} isOwn={isOwn} />}
         >
           {body}
         </ReactableMessage>

@@ -304,6 +304,7 @@ export function useChat(
           content: message.content,
           attachmentIds: message.attachments.map((attachment) => attachment.id),
           viewOnce: message.viewOnce !== undefined,
+          replyTo: message.replyTo,
         },
         (error, response) => {
           if (error || !response.ok) {
@@ -371,18 +372,23 @@ export function useChat(
   }
 
   /**
-   * Réagit à un message : un emoji différent remplace sa réaction, le même la
-   * retire. Affiché tout de suite, puis confirmé par le serveur (diffusion à tous).
+   * Réagit à un message, ou à un moment de son vocal (`atMs`, « 🔥 à 0:42 ») :
+   * une réaction différente remplace la sienne, la même la retire. Affiché
+   * tout de suite, puis confirmé par le serveur (diffusion à tous).
    */
-  function toggleReaction(message: ChatMessage, emoji: ReactionEmoji) {
+  function toggleReaction(message: ChatMessage, emoji: ReactionEmoji, atMs?: number) {
     const current = message.reactions.find((item) => item.user.id === userId)
-    const next = current?.emoji === emoji ? null : emoji
+    // Sans moment (pastille, barre de réactions), le même emoji retire la sienne, où qu'elle soit.
+    const isSame = current?.emoji === emoji && (atMs === undefined || current.atMs === atMs)
     const others = message.reactions.filter((item) => item.user.id !== userId)
+    const next = isSame ? null : { user: currentUser, emoji, ...(atMs !== undefined && { atMs }) }
 
-    updateMessage(message.id, {
-      reactions: next ? [...others, { user: currentUser, emoji: next }] : others,
+    updateMessage(message.id, { reactions: next ? [...others, next] : others })
+    socket.emit("message:react", {
+      messageId: message.id,
+      emoji: next?.emoji ?? null,
+      atMs: next?.atMs,
     })
-    socket.emit("message:react", { messageId: message.id, emoji: next })
   }
 
   /**
@@ -437,12 +443,13 @@ export function useChat(
    * Les pièces jointes doivent déjà avoir été envoyées (`uploadAttachment`).
    * `id` : fixé à l'avance pour un vocal parlé en direct (talkie-walkie), qui
    * le relie à ce direct chez ceux qui l'ont entendu. `viewOnce` : chaque
-   * destinataire ne pourra ouvrir les pièces jointes qu'une fois.
+   * destinataire ne pourra ouvrir les pièces jointes qu'une fois. `replyTo` :
+   * le message (ou le moment d'un vocal) auquel il répond.
    */
   function sendMessage(
     content: string,
     attachments: Attachment[] = [],
-    { id = createId(), viewOnce = false }: SendOptions = {}
+    { id = createId(), viewOnce = false, replyTo }: SendOptions = {}
   ) {
     const now = Date.now()
     const message: ChatMessage = {
@@ -458,6 +465,7 @@ export function useChat(
       reactions: [],
       // Les pièces jointes restent ici le temps de l'envoi ; le serveur ne les diffusera pas.
       ...(viewOnce && { viewOnce: { items: attachments.map(toViewOnceItem), openedBy: [] } }),
+      ...(replyTo && { replyTo }),
       status: "sending",
     }
 

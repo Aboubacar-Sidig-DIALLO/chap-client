@@ -5,15 +5,17 @@ import { useEffect, useRef, useState } from "react"
 /**
  * Les webm produits par `MediaRecorder` (Chrome) n'annoncent pas leur durée
  * (`Infinity`), ce qui empêche de s'y déplacer. Se placer « au bout » force le
- * navigateur à la calculer ; on revient ensuite au début.
+ * navigateur à la calculer ; on revient ensuite là où l'on était (le début,
+ * ou le moment déjà demandé, ex. « écouter à 0:42 » depuis une réponse).
  */
 function ensureKnownDuration(audio: HTMLAudioElement, onKnown: () => void) {
   if (Number.isFinite(audio.duration)) return onKnown()
 
+  const resumeAt = audio.currentTime
   const handleDurationChange = () => {
     if (!Number.isFinite(audio.duration)) return
     audio.removeEventListener("durationchange", handleDurationChange)
-    audio.currentTime = 0
+    audio.currentTime = resumeAt
     onKnown()
   }
   audio.addEventListener("durationchange", handleDurationChange)
@@ -111,6 +113,18 @@ export function useAudioPlayer({
     renderProgress(ms)
   }
 
+  /** Se place à `ms` du début (un moment cité : « à 0:42 »). */
+  function seekTo(ms: number) {
+    if (durationMs > 0) seek(ms / durationMs)
+  }
+
+  /** Position actuelle (ms), lue à la demande ; 0 tant que le fichier se prépare. */
+  function getPositionMs() {
+    const audio = audioRef.current
+    if (!audio || isPreparingRef.current) return 0
+    return Math.min(audio.currentTime * 1000, durationMs)
+  }
+
   /** Avance ou recule de `deltaMs`. */
   function skip(deltaMs: number) {
     if (durationMs > 0) seek((currentMs + deltaMs) / durationMs)
@@ -171,6 +185,8 @@ export function useAudioPlayer({
     pause,
     toggle,
     seek,
+    seekTo,
+    getPositionMs,
     skip,
   }
 }
