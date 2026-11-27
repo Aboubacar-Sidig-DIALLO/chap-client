@@ -24,6 +24,7 @@ import { AnimatePresence, motion, useIsPresent } from "motion/react"
 import { useState } from "react"
 import type { ReactionEmoji } from "../lib/config"
 import { getJumboEmojis } from "../lib/emoji"
+import { EXPIRY_FINAL_MS } from "../lib/expiry"
 import { formatTime } from "../lib/format"
 import type { MessageRun } from "../lib/group-messages"
 import { getMessageReceipt } from "../lib/receipts"
@@ -33,6 +34,7 @@ import { Emoji } from "./emoji"
 import { useMessageActions } from "./message-actions"
 import { MessageAttachments } from "./message-attachments"
 import { MessageBubble } from "./message-bubble"
+import { ExpiryCountdown } from "./expiry-countdown"
 import { MessageEditor } from "./message-editor"
 import { ReactableMessage } from "./message-reactions"
 import { MessageReceiptStatus } from "./message-receipt-status"
@@ -102,6 +104,9 @@ export function ChatMessageGroup({
           <time dateTime={lastMessage.createdAt} suppressHydrationWarning>
             {formatTime(lastMessage.createdAt)}
           </time>
+          {/* Le premier de la suite part le premier : son compte à rebours vaut pour elle. */}
+          <span aria-hidden>·</span>
+          <ExpiryCountdown key={run.messages[0].id} expiresAt={run.messages[0].expiresAt} />
           {/* Statut du dernier message : les curseurs étant ordonnés, les précédents en sont au moins là. */}
           {isOwn && lastMessage.status !== "failed" && (
             <MessageReceiptStatus
@@ -196,6 +201,11 @@ function MessageItem({
   const isPresent = useIsPresent()
   const actions = useMessageActions(message)
   const [isEditing, setIsEditing] = useState(false)
+  // Sa dernière minute, il se dissout. Calée une fois pour toutes sur son
+  // expiration (délai négatif : affiché déjà dans sa dernière minute, il
+  // reprend en cours de route) ; aucun minuteur, aucun rendu en plus.
+  const [mountedAt] = useState(() => Date.now())
+  const dissolveDelayMs = Date.parse(message.expiresAt) - EXPIRY_FINAL_MS - mountedAt
   const jumboEmojis = message.content ? getJumboEmojis(message.content) : null
   // Vu entre-temps par un autre : l'édition se referme d'elle-même.
   const showEditor = isEditing && actions?.canEdit === true
@@ -251,12 +261,17 @@ function MessageItem({
       exit={{ opacity: 0, height: 0, filter: blur.disclosure, transition: collapse }}
       inert={!isPresent}
       style={{ overflow: isPresent ? undefined : "clip" }}
-      // Seul le dernier de la suite affiche son heure : au survol, chacun donne la sienne.
-      title={formatTime(message.createdAt)}
+      // Seul le dernier de la suite affiche son heure : au survol, chacun donne la sienne, et celle de sa disparition.
+      title={`Envoyé à ${formatTime(message.createdAt)} · disparaît à ${formatTime(message.expiresAt)}`}
       // `@container` : la colonne de référence des largeurs max. des bulles et cartes (`cqw`),
       // quelles que soient les enveloppes intermédiaires (réactions).
       className="@container flex w-full scroll-my-24 flex-col items-start gap-1 rounded-2xl group-data-[align=end]/message:items-end data-flash:animate-reply-flash"
     >
+      {/* Une enveloppe à part pour la dissolution : la lueur du retour depuis une citation garde la sienne. */}
+      <div
+        className={SLOT_CLASS}
+        style={{ animation: `message-dissolve ${EXPIRY_FINAL_MS}ms linear ${dissolveDelayMs}ms forwards` }}
+      >
       {/* Supprimé par un modérateur : le message laisse place à sa mention, en fondu. */}
       <Swap swapKey={message.deletedBy ? "deleted" : "message"} className={SLOT_CLASS}>
       {/* On ne réagit qu'à un message reçu par le serveur, et jamais à un message supprimé. */}
@@ -276,6 +291,7 @@ function MessageItem({
         body
       )}
       </Swap>
+      </div>
 
       {message.status === "failed" && (
         <AnimateIcon animateOnHover="rotate" animateOnTap="rotate" asChild>

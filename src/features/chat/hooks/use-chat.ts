@@ -1,11 +1,7 @@
 "use client"
 
 import { useEffect, useEffectEvent, useRef, useState } from "react"
-import {
-  EXPIRY_CHECK_INTERVAL_MS,
-  MESSAGE_TTL_MS,
-  type ReactionEmoji,
-} from "../lib/config"
+import { MESSAGE_TTL_MS, type ReactionEmoji } from "../lib/config"
 import { createId } from "../lib/id"
 import {
   countUnread,
@@ -260,14 +256,18 @@ export function useChat(
     }
   }, [socket, userId, friendId])
 
-  // Application de l'instant : chaque message disparaît une heure après son envoi.
+  // Application de l'instant : chaque message disparaît une heure après son envoi,
+  // à la seconde près (son compte à rebours arrive à zéro sous les yeux de l'utilisateur).
+  // Un seul minuteur, réglé sur le prochain à partir.
+  const nextExpiry = Math.min(...messages.map((message) => Date.parse(message.expiresAt)))
   useEffect(() => {
-    const interval = setInterval(
+    if (!Number.isFinite(nextExpiry)) return
+    const timeout = setTimeout(
       () => setMessages((current) => withoutExpired(current, Date.now())),
-      EXPIRY_CHECK_INTERVAL_MS
+      Math.max(0, nextExpiry - Date.now())
     )
-    return () => clearInterval(interval)
-  }, [])
+    return () => clearTimeout(timeout)
+  }, [nextExpiry])
 
   /** Un destinataire a ouvert ce message à vue unique (une seule fois). */
   function addOpener(messageId: string, user: ChatUser) {

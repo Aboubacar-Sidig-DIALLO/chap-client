@@ -96,6 +96,36 @@
     }
   }
 
+  /*
+   * Dernière minute d'un message : il se dissout sous les yeux, jusqu'à sa
+   * disparition. Durée et délai sont posés par le message lui-même, calés sur
+   * son heure d'expiration.
+   */
+  @keyframes message-dissolve {
+    from {
+      opacity: 1;
+      filter: blur(0);
+    }
+    to {
+      opacity: 0.35;
+      filter: blur(0.6px);
+    }
+  }
+
+  /* Sablier de la dernière minute : il bascule, comme retourné. */
+  --animate-hourglass: hourglass 2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+
+  @keyframes hourglass {
+    0%,
+    40% {
+      rotate: 0deg;
+    }
+    60%,
+    100% {
+      rotate: 180deg;
+    }
+  }
+
   /* Message retrouvé depuis une citation : il s'éclaire, puis s'éteint doucement. */
   --animate-reply-flash: reply-flash 1.6s cubic-bezier(0.22, 1, 0.36, 1);
 
