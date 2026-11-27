@@ -38,6 +38,12 @@ interface UseAudioPlayerOptions {
   onEnded?: () => void
   /** Position atteinte pendant la lecture (de 0 à 1), quelques fois par seconde. */
   onProgress?: (ratio: number) => void
+  /**
+   * Adresse du fichier, quand le même lecteur en lit plusieurs à la suite
+   * (ex. les vocaux qu'on réécoute avant de les envoyer) : à chaque nouveau
+   * fichier, la lecture repart de zéro.
+   */
+  source?: string | null
 }
 
 /**
@@ -52,6 +58,7 @@ export function useAudioPlayer({
   onPause,
   onEnded,
   onProgress,
+  source = null,
 }: UseAudioPlayerOptions) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
@@ -60,6 +67,15 @@ export function useAudioPlayer({
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentMs, setCurrentMs] = useState(0)
   const [fileDurationMs, setFileDurationMs] = useState<number | null>(null)
+
+  // Nouveau fichier : on repart de zéro (position, durée lue, lecture).
+  const [currentSource, setCurrentSource] = useState(source)
+  if (currentSource !== source) {
+    setCurrentSource(source)
+    setIsPlaying(false)
+    setCurrentMs(0)
+    setFileDurationMs(null)
+  }
 
   const durationMs = knownDurationMs ?? fileDurationMs ?? 0
 

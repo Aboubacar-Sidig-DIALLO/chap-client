@@ -7,6 +7,7 @@ import {
   KeyboardIcon,
   SquareLock02Icon,
   SquareUnlock02Icon,
+  StopIcon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AnimatePresence, motion, useTransform, type MotionValue } from "motion/react"
@@ -22,6 +23,8 @@ import {
 import { ArrowUp02 } from "@/components/animate-ui/icons/hugeicons/arrow-up-02"
 import { Delete02 } from "@/components/animate-ui/icons/hugeicons/delete-02"
 import { Mic } from "@/components/animate-ui/icons/hugeicons/mic"
+import { Pause } from "@/components/animate-ui/icons/hugeicons/pause"
+import { Play } from "@/components/animate-ui/icons/hugeicons/play"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
@@ -29,6 +32,7 @@ import { useTalkie } from "@/features/talkie/components/talkie-provider"
 import { formatHearers, formatPresent, formatQuiet } from "@/features/talkie/lib/labels"
 import type { OutgoingTalk } from "@/features/talkie/types"
 import { useStreamLevel } from "../hooks/use-audio-level"
+import { useAudioPlayer } from "../hooks/use-audio-player"
 import { usePushToTalk } from "../hooks/use-push-to-talk"
 import { useVoiceRecorder } from "../hooks/use-voice-recorder"
 import { COMPOSER_LAYOUT_IDS } from "../lib/composer-layout"
@@ -40,17 +44,25 @@ import type { VoiceRecording } from "../lib/voice-recording"
 import type { Attachment, SendOptions } from "../types"
 import { ViewOnceIcon } from "./view-once-icon"
 import { VoiceHalo, type VoiceHaloTone } from "./voice-halo"
+import { VoiceReviewCard } from "./voice-review-card"
 import { useVoicePlayback } from "./voice-playback"
 
 /** Diamètre du bouton micro (px) : l'action principale de l'application. */
 const MIC_SIZE = 68
 
 /** Ce que fait le bouton micro, et donc l'icône qu'il montre. */
-type MicIcon = "mic" | "cancel" | "send" | "sending"
+type MicIcon = "mic" | "cancel" | "send" | "sending" | "play" | "pause"
 
 type Problem =
   | { kind: "restart"; message: string }
   | { kind: "resend"; message: string; recording: VoiceRecording; id: string }
+
+/** Le vocal enregistré, mis de côté pour être réécouté avant de partir. */
+interface Review {
+  recording: VoiceRecording
+  /** Adresse locale du fichier (`blob:`), libérée dès qu'il est envoyé ou jeté. */
+  url: string
+}
 
 interface VoiceDockProps {
   /** `id` : celui du direct (talkie-walkie) que ce vocal prolonge. */
@@ -77,6 +89,9 @@ interface VoiceDockProps {
  * Talkie-walkie : si quelqu'un d'autre a la conversation ouverte, il entend
  * votre voix en direct pendant que vous parlez ; le vocal part ensuite pour
  * tous (déjà « écouté » par ceux qui l'ont entendu en direct).
+ *
+ * Réécoute : en mains libres (hors direct), on peut arrêter sans envoyer,
+ * s'écouter (l'orbe devient lecture / pause), puis envoyer ou jeter le vocal.
  */
 export function VoiceDock({
   onSend,
@@ -95,6 +110,7 @@ export function VoiceDock({
   const [isCancelArmed, setIsCancelArmed] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [problem, setProblem] = useState<Problem | null>(null)
+  const [review, setReview] = useState<Review | null>(null)
   const uploadRef = useRef<AbortController | null>(null)
 
   const recorder = useVoiceRecorder({
@@ -104,12 +120,34 @@ export function VoiceDock({
   })
   const microphoneLevel = useStreamLevel(recorder.stream)
 
+  // Le lecteur de la réécoute : un vocal reçu en cours de lecture se met en pause.
+  const preview = useAudioPlayer({
+    source: review?.url,
+    knownDurationMs: review?.recording.durationMs,
+    rate: 1,
+    onPlay: () => {
+      if (playback.nowPlaying?.isPlaying) playback.toggleNowPlaying()
+    },
+  })
+
   const isActive = recorder.status !== "idle"
   const isRecording = recorder.status === "recording"
   const isHolding = isActive && mode === "hold"
 
   // Fermeture pendant l'envoi : on l'annule.
   useEffect(() => () => uploadRef.current?.abort(), [])
+
+  // Le fichier réécouté ne reste en mémoire que le temps de la réécoute.
+  useEffect(() => {
+    if (review) return () => URL.revokeObjectURL(review.url)
+  }, [review])
+
+  // Une seule voix à la fois : un vocal de la conversation lancé met la réécoute en pause.
+  const isConversationPlaying = playback.nowPlaying?.isPlaying ?? false
+  const pausePreview = useEffectEvent(() => preview.pause())
+  useEffect(() => {
+    if (isConversationPlaying) pausePreview()
+  }, [isConversationPlaying])
 
   // Micro ouvert : la voix part aussi en direct, si la parole a été demandée.
   useEffect(() => {
@@ -188,6 +226,40 @@ export function VoiceDock({
     setMode("locked")
   }
 
+  /**
+   * Arrête l'enregistrement sans l'envoyer, pour le réécouter. La parole
+   * demandée (hors direct) est rendue : le vocal partira plus tard, comme un
+   * vocal ordinaire, avec son propre id.
+   */
+  async function stopForReview() {
+    setMode("locked")
+    setIsCancelArmed(false)
+    talkieSession.end({ cancelled: true })
+    takeTalkId()
+    const recording = await recorder.stop()
+    if (!recording) return
+    if (recording.durationMs < MIN_VOICE_DURATION_MS) {
+      setProblem({ kind: "restart", message: "Message vocal trop court — enregistrez un peu plus longtemps" })
+      return
+    }
+    setReview({ recording, url: URL.createObjectURL(recording.file) })
+  }
+
+  /** Jette le vocal réécouté. */
+  function discardReview() {
+    preview.pause()
+    setReview(null)
+  }
+
+  /** Envoie le vocal réécouté. */
+  async function sendReview() {
+    if (!review) return
+    preview.pause()
+    const { recording } = review
+    setReview(null)
+    await send(recording, createId())
+  }
+
   const pushToTalk = usePushToTalk({
     onStart: () => {
       setMode("hold")
@@ -204,9 +276,10 @@ export function VoiceDock({
     onCancelArmedChange: setIsCancelArmed,
   })
 
-  // Échap annule l'enregistrement en cours.
+  // Échap annule l'enregistrement en cours, ou jette le vocal en réécoute.
   const onEscape = useEffectEvent(() => {
     if (isActive) cancel()
+    else if (review) discardReview()
   })
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -237,27 +310,46 @@ export function VoiceDock({
       : isSpeaking
         ? playback.getLevel
         : undefined
+  const isReviewing = review !== null && !isSending
   const icon: MicIcon = isSending
     ? "sending"
-    : isCancelArmed
-      ? "cancel"
-      : isActive && !isHolding
-        ? "send"
-        : "mic"
+    : isReviewing
+      ? preview.isPlaying
+        ? "pause"
+        : "play"
+      : isCancelArmed
+        ? "cancel"
+        : isActive && !isHolding
+          ? "send"
+          : "mic"
 
-  const caption = getCaption({
-    isSending,
-    isStarting: recorder.status === "starting",
-    isHolding,
-    isActive,
-    isCancelArmed,
-    isLive,
-    outgoing,
-    canTalkLive,
-    isViewOnce,
-  })
+  const caption = isReviewing
+    ? preview.isPlaying
+      ? "Touchez pour mettre en pause"
+      : "Touchez pour réécouter"
+    : getCaption({
+        isSending,
+        isStarting: recorder.status === "starting",
+        isHolding,
+        isActive,
+        isCancelArmed,
+        isLive,
+        outgoing,
+        canTalkLive,
+        isViewOnce,
+      })
 
-  const view = isSending ? "sending" : isHolding ? "hold" : isActive ? "locked" : "idle"
+  const view = isSending
+    ? "sending"
+    : isReviewing
+      ? "review"
+      : isHolding
+        ? "hold"
+        : isActive
+          ? "locked"
+          : "idle"
+  // En mains libres, hors direct : on peut s'arrêter pour se réécouter (en direct, on vous a déjà entendu).
+  const canReview = view === "locked" && isRecording && !isLive
   const visibleProblem = recorder.error
     ? ({ kind: "restart", message: recorder.error } as const)
     : problem
@@ -265,6 +357,19 @@ export function VoiceDock({
   return (
     <ReducedMotionConfig>
       <div className="relative z-10">
+        {review && <audio src={review.url} {...preview.audioProps} />}
+        <AnimatePresence initial={false}>
+          {isReviewing && (
+            <VoiceReviewCard
+              levels={review.recording.waveform}
+              progressRef={preview.progressRef}
+              currentMs={preview.currentMs}
+              durationMs={preview.durationMs}
+              isPlaying={preview.isPlaying}
+              onSeek={preview.seek}
+            />
+          )}
+        </AnimatePresence>
         <AnimatePresence initial={false}>
           {visibleProblem && (
             <DockProblem
@@ -289,16 +394,16 @@ export function VoiceDock({
           <DockSide side="left" view={view}>
             {view === "idle" && <div className="flex items-center gap-0.5">{leading}</div>}
             {view === "hold" && <RecordingTimer elapsedMs={recorder.elapsedMs} isLive={isLive} />}
-            {(view === "locked" || view === "sending") && (
+            {(view === "locked" || view === "sending" || view === "review") && (
               <div className="flex items-center gap-1">
                 <AnimateIcon animateOnHover animateOnTap asChild>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    aria-label="Annuler le message vocal"
+                    aria-label={view === "review" ? "Supprimer le vocal enregistré" : "Annuler le message vocal"}
                     disabled={isSending}
-                    onClick={cancel}
+                    onClick={view === "review" ? discardReview : cancel}
                     className="size-10 text-muted-foreground hover:text-destructive"
                   >
                     <Delete02 size={18} />
@@ -322,8 +427,14 @@ export function VoiceDock({
             caption={caption}
             disabled={disabled || isSending}
             // Au repos : le geste « maintenir pour parler ». En mains libres : toucher envoie.
+            // En réécoute : l'orbe lit le vocal (ou le met en pause).
             buttonProps={
-              isActive
+              isReviewing
+                ? {
+                    onClick: preview.toggle,
+                    "aria-label": preview.isPlaying ? "Mettre en pause la réécoute" : "Réécouter le vocal enregistré",
+                  }
+                : isActive
                 ? { onClick: () => void finish(), "aria-label": "Envoyer le message vocal" }
                 : {
                     ...pushToTalk.buttonProps,
@@ -349,17 +460,32 @@ export function VoiceDock({
               </Button>
             )}
             {view === "hold" && <CancelHint isArmed={isCancelArmed} />}
-            {(view === "locked" || view === "sending") && (
-              <Button
-                type="button"
-                size="icon"
-                aria-label={isSending ? "Envoi du message vocal…" : "Envoyer le message vocal"}
-                disabled={!isRecording}
-                onClick={() => void finish()}
-                className="size-10"
-              >
-                {isSending ? <Spinner size={18} /> : <ArrowUp02 size={18} />}
-              </Button>
+            {(view === "locked" || view === "sending" || view === "review") && (
+              <div className="flex items-center gap-1">
+                {canReview && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Arrêter et réécouter avant d'envoyer"
+                    title="Réécouter avant d'envoyer"
+                    onClick={() => void stopForReview()}
+                    className="size-10 text-muted-foreground"
+                  >
+                    <HugeiconsIcon icon={StopIcon} size={18} strokeWidth={2} fill="currentColor" />
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="icon"
+                  aria-label={isSending ? "Envoi du message vocal…" : "Envoyer le message vocal"}
+                  disabled={view === "review" ? false : !isRecording}
+                  onClick={() => void (view === "review" ? sendReview() : finish())}
+                  className="size-10"
+                >
+                  {isSending ? <Spinner size={18} /> : <ArrowUp02 size={18} />}
+                </Button>
+              </div>
             )}
           </DockSide>
         </div>
@@ -483,6 +609,8 @@ function MicButton({
                       {icon === "cancel" && <Delete02 size={26} />}
                       {icon === "send" && <ArrowUp02 size={28} />}
                       {icon === "sending" && <Spinner size={26} />}
+                      {icon === "play" && <Play size={28} fill="currentColor" className="translate-x-0.5" />}
+                      {icon === "pause" && <Pause size={28} fill="currentColor" />}
                     </motion.span>
                   </AnimatePresence>
                 </span>
