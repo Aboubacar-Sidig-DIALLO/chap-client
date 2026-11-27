@@ -2,6 +2,7 @@
 
 import { createContext, use, useEffect, useEffectEvent, useRef, useState } from "react"
 import { createAudioMeter, elementSource, type AudioMeter } from "@/components/voice-audio"
+import { closeAudioContext } from "@/lib/audio-context"
 import { isPlayableAudio } from "../lib/attachments"
 import type { ChatMessage, ChatUser, LiveListener } from "../types"
 
@@ -103,7 +104,7 @@ export function VoicePlaybackProvider({
   useEffect(() => {
     function wake() {
       audioContextRef.current ??= new AudioContext()
-      void audioContextRef.current.resume()
+      if (audioContextRef.current.state === "suspended") void audioContextRef.current.resume()
     }
     window.addEventListener("pointerdown", wake, true)
     window.addEventListener("keydown", wake, true)
@@ -111,7 +112,10 @@ export function VoicePlaybackProvider({
       window.removeEventListener("pointerdown", wake, true)
       window.removeEventListener("keydown", wake, true)
       meterRef.current?.disconnect()
-      void audioContextRef.current?.close()
+      meterRef.current = null
+      // Oublié une fois fermé : un remontage (mode strict) en recrée un neuf.
+      if (audioContextRef.current) closeAudioContext(audioContextRef.current)
+      audioContextRef.current = null
     }
   }, [])
 

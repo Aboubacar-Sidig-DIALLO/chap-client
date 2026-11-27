@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { createAudioMeter, type AudioMeter } from "@/components/voice-audio"
+import { closeAudioContext } from "@/lib/audio-context"
 
 /**
  * Écrit le volume (0 à 1) dans la variable CSS `--level` de l'élément, à chaque
@@ -48,7 +49,7 @@ export function useStreamLevel(stream: MediaStream | null) {
     return () => {
       meterRef.current?.disconnect()
       meterRef.current = null
-      void context.close()
+      closeAudioContext(context)
     }
   }, [stream])
 

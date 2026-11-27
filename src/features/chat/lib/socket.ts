@@ -26,6 +26,17 @@ export type SendMessageAck =
 /** Réponse à une action sur un message (modification, suppression…). */
 export type MessageActionAck = { ok: true } | { ok: false; error: string }
 
+/**
+ * Réponse à une demande de parole en direct (talkie-walkie). Refusée, le
+ * vocal part simplement comme d'habitude : personne pour écouter (`alone`),
+ * quelqu'un parle déjà (`busy`), ou vocal interdit ici.
+ */
+export type TalkStartAck =
+  | { ok: true; listeners: ChatUser[] }
+  | { ok: false; reason: "alone" }
+  | { ok: false; reason: "busy"; speaker: ChatUser }
+  | { ok: false; reason: "forbidden" | "invalid"; error: string }
+
 /** Contrat Socket.io — à garder synchronisé avec le serveur (`sse/src/chat/chat.types.ts`). */
 interface ServerToClientEvents {
   /** Conversation ouverte (accès vérifié), juste avant son historique. */
@@ -68,6 +79,12 @@ interface ServerToClientEvents {
   "call:signal": (signal: CallSignal) => void
   /** Réaction envoyée pendant le direct. */
   "call:reaction": (reaction: CallReaction) => void
+  /** Talkie-walkie : quelqu'un prend la parole en direct (`id` : celui du vocal qui suivra). */
+  "talkie:started": (event: { id: string; user: ChatUser }) => void
+  /** Un morceau de sa voix (PCM 16 bits, 16 kHz, mono). */
+  "talkie:chunk": (event: { id: string; audio: ArrayBuffer }) => void
+  /** Il a relâché le micro (`cancelled` : vocal annulé) ; reçu aussi par l'orateur. */
+  "talkie:ended": (event: { id: string; user: ChatUser; cancelled: boolean }) => void
 }
 
 interface ClientToServerEvents {
@@ -109,6 +126,12 @@ interface ClientToServerEvents {
   /** Message WebRTC pour un autre participant (`peerId` : le destinataire). */
   "call:signal": (signal: CallSignal) => void
   "call:react": (emoji: ReactionEmoji) => void
+  /** Demande la parole en direct pour le vocal `id`. */
+  "talkie:start": (payload: { id: string }, ack: (response: TalkStartAck) => void) => void
+  /** Un morceau de voix (PCM 16 bits, 16 kHz, mono). */
+  "talkie:chunk": (audio: ArrayBuffer) => void
+  /** Rend la parole (`cancelled` : le vocal ne suivra pas). */
+  "talkie:end": (payload: { cancelled: boolean }) => void
   /** Tous les messages jusqu'à `seq` inclus ont été reçus. */
   "messages:delivered": (seq: number) => void
   /** Tous les messages jusqu'à `seq` inclus ont été vus à l'écran. */

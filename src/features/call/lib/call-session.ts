@@ -1,4 +1,5 @@
 import { createAudioMeter, type AudioMeter } from "@/components/voice-audio"
+import { closeAudioContext } from "@/lib/audio-context"
 import type { ReactionEmoji } from "@/features/chat/lib/config"
 import { listen, type ChatSocket } from "@/features/chat/lib/socket"
 import type { CallParticipant, CallReaction, CallSignal } from "../types"
@@ -327,7 +328,7 @@ export class CallSession {
     this.cameraTrack?.stop()
     this.micTrack = null
     this.cameraTrack = null
-    void this.audioContext?.close()
+    if (this.audioContext) closeAudioContext(this.audioContext)
     this.audioContext = null
 
     this.update({

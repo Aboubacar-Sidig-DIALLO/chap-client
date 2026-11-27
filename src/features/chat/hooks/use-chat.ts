@@ -396,11 +396,15 @@ export function useChat(
     )
   }
 
-  /** Les pièces jointes doivent déjà avoir été envoyées (`uploadAttachment`). */
-  function sendMessage(content: string, attachments: Attachment[] = []) {
+  /**
+   * Les pièces jointes doivent déjà avoir été envoyées (`uploadAttachment`).
+   * `id` : fixé à l'avance pour un vocal parlé en direct (talkie-walkie), qui
+   * le relie à ce direct chez ceux qui l'ont entendu.
+   */
+  function sendMessage(content: string, attachments: Attachment[] = [], id = createId()) {
     const now = Date.now()
     const message: ChatMessage = {
-      id: createId(),
+      id,
       author: currentUser,
       content,
       attachments,

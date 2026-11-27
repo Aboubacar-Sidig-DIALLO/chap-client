@@ -25,6 +25,10 @@ import { Mic } from "@/components/animate-ui/icons/hugeicons/mic"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
+import { LiveDot } from "@/features/call/components/live-dot"
+import { useTalkie } from "@/features/talkie/components/talkie-provider"
+import { formatHearers, formatPresent } from "@/features/talkie/lib/labels"
+import type { OutgoingTalk } from "@/features/talkie/types"
 import { useStreamLevel } from "../hooks/use-audio-level"
 import { usePushToTalk } from "../hooks/use-push-to-talk"
 import { useVoiceRecorder } from "../hooks/use-voice-recorder"
@@ -32,6 +36,7 @@ import { COMPOSER_LAYOUT_IDS } from "../lib/composer-layout"
 import { uploadAttachment } from "../lib/attachments"
 import { MAX_VOICE_DURATION_MS, MIN_VOICE_DURATION_MS } from "../lib/config"
 import { formatDuration } from "../lib/format"
+import { createId } from "../lib/id"
 import type { VoiceRecording } from "../lib/voice-recording"
 import type { Attachment } from "../types"
 import { VoiceHalo, type VoiceHaloTone } from "./voice-halo"
@@ -45,10 +50,11 @@ type MicIcon = "mic" | "cancel" | "send" | "sending"
 
 type Problem =
   | { kind: "restart"; message: string }
-  | { kind: "resend"; message: string; recording: VoiceRecording }
+  | { kind: "resend"; message: string; recording: VoiceRecording; id: string }
 
 interface VoiceDockProps {
-  onSend: (content: string, attachments: Attachment[]) => void
+  /** `id` : celui du direct (talkie-walkie) que ce vocal prolonge. */
+  onSend: (content: string, attachments: Attachment[], id?: string) => void
   /** Prévient les autres participants qu'un vocal s'enregistre. */
   onRecordingChange?: (isRecording: boolean) => void
   /** Passe au clavier (message écrit) ; absent si l'écrit est interdit. */
@@ -62,6 +68,10 @@ interface VoiceDockProps {
  * Le dock vocal, cœur de l'application : un orbe flottant qui est à la fois
  * le bouton « maintenir pour parler » et la voix de la conversation. Il écoute
  * le micro pendant un enregistrement et s'anime avec le vocal en cours de lecture.
+ *
+ * Talkie-walkie : si quelqu'un d'autre a la conversation ouverte, il entend
+ * votre voix en direct pendant que vous parlez ; le vocal part ensuite pour
+ * tous (déjà « écouté » par ceux qui l'ont entendu en direct).
  */
 export function VoiceDock({
   onSend,
@@ -71,6 +81,10 @@ export function VoiceDock({
   disabled,
 }: VoiceDockProps) {
   const playback = useVoicePlayback()
+  const talkie = useTalkie()
+  const { session: talkieSession } = talkie
+  /** Id du vocal en cours d'enregistrement, partagé avec son direct. */
+  const talkIdRef = useRef<string | null>(null)
   const [mode, setMode] = useState<"hold" | "locked">("locked")
   const [isCancelArmed, setIsCancelArmed] = useState(false)
   const [isSending, setIsSending] = useState(false)
@@ -91,6 +105,19 @@ export function VoiceDock({
   // Fermeture pendant l'envoi : on l'annule.
   useEffect(() => () => uploadRef.current?.abort(), [])
 
+  // Micro ouvert : la voix part aussi en direct, si la parole a été demandée.
+  useEffect(() => {
+    if (recorder.stream) return talkieSession.capture(recorder.stream)
+  }, [recorder.stream, talkieSession])
+
+  // Micro refusé ou introuvable : il n'y aura ni direct, ni vocal.
+  useEffect(() => {
+    if (recorder.error) talkieSession.end({ cancelled: true })
+  }, [recorder.error, talkieSession])
+
+  // Fermé en pleine prise de parole : on rend la parole.
+  useEffect(() => () => talkieSession.end({ cancelled: true }), [talkieSession])
+
   // « Alice enregistre un vocal… » chez les autres, le temps de l'enregistrement.
   const wasRecordingRef = useRef(false)
   const reportRecording = useEffectEvent((value: boolean) => onRecordingChange?.(value))
@@ -102,7 +129,7 @@ export function VoiceDock({
     if (wasRecordingRef.current) reportRecording(false)
   }, [])
 
-  async function send(recording: VoiceRecording) {
+  async function send(recording: VoiceRecording, id: string) {
     const controller = new AbortController()
     uploadRef.current = controller
     setProblem(null)
@@ -113,30 +140,43 @@ export function VoiceDock({
         signal: controller.signal,
         voice: { durationMs: recording.durationMs, waveform: recording.waveform },
       })
-      onSend("", [attachment])
+      onSend("", [attachment], id)
     } catch (uploadError) {
       if (uploadError instanceof Error && uploadError.name !== "AbortError") {
-        setProblem({ kind: "resend", message: uploadError.message, recording })
+        setProblem({ kind: "resend", message: uploadError.message, recording, id })
       }
     } finally {
       if (uploadRef.current === controller) setIsSending(false)
     }
   }
 
+  /** L'id du vocal en cours, oublié une fois utilisé (le suivant en aura un nouveau). */
+  function takeTalkId() {
+    const id = talkIdRef.current ?? createId()
+    talkIdRef.current = null
+    return id
+  }
+
   async function finish() {
     setMode("locked")
     setIsCancelArmed(false)
+    const id = takeTalkId()
     const recording = await recorder.stop()
+    const isTooShort = !recording || recording.durationMs < MIN_VOICE_DURATION_MS
+    // Pas de vocal à suivre : le direct est annoncé comme annulé.
+    talkieSession.end({ cancelled: isTooShort })
     if (!recording) return
 
-    if (recording.durationMs < MIN_VOICE_DURATION_MS) {
+    if (isTooShort) {
       setProblem({ kind: "restart", message: "Message vocal trop court — maintenez un peu plus longtemps" })
       return
     }
-    await send(recording)
+    await send(recording, id)
   }
 
   function cancel() {
+    talkieSession.end({ cancelled: true })
+    takeTalkId()
     recorder.cancel()
     setIsCancelArmed(false)
     setMode("locked")
@@ -146,6 +186,10 @@ export function VoiceDock({
     onStart: () => {
       setMode("hold")
       setProblem(null)
+      // Le vocal reçoit son id dès maintenant : c'est aussi celui du direct.
+      const id = createId()
+      talkIdRef.current = id
+      talkieSession.begin(id)
       void recorder.start()
     },
     onLock: () => setMode("locked"),
@@ -166,14 +210,26 @@ export function VoiceDock({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
-  // Les ondes du bouton suivent la voix du moment : la vôtre, ou celle du vocal lu.
+  // Talkie-walkie : vous parlez en direct, quelqu'un vous parle, ou quelqu'un est là pour vous entendre.
+  const outgoing = talkie.outgoing
+  const isLive = isActive && outgoing?.status === "live"
+  const isHearingLive = talkie.incoming !== null && !talkie.isMuted && !talkie.isSuppressed
+  const canTalkLive = talkie.audience.length > 0 && !talkie.isSuppressed && !disabled
+
+  // Les ondes du bouton suivent la voix du moment : la vôtre, celle du direct reçu, ou celle du vocal lu.
   const isSpeaking = playback.nowPlaying?.isPlaying ?? false
   const tone: VoiceHaloTone = isCancelArmed
     ? "muted"
     : isActive || isSending
       ? "recording"
       : "voice"
-  const getLevel = isActive ? microphoneLevel : isSpeaking ? playback.getLevel : undefined
+  const getLevel = isActive
+    ? microphoneLevel
+    : isHearingLive
+      ? talkieSession.getIncomingLevel
+      : isSpeaking
+        ? playback.getLevel
+        : undefined
   const icon: MicIcon = isSending
     ? "sending"
     : isCancelArmed
@@ -182,17 +238,16 @@ export function VoiceDock({
         ? "send"
         : "mic"
 
-  const caption = isSending
-    ? "Envoi…"
-    : recorder.status === "starting"
-      ? "Ouverture du micro…"
-      : isHolding
-        ? isCancelArmed
-          ? "Relâchez pour annuler"
-          : "Relâchez pour envoyer"
-        : isActive
-          ? "Verrouillé · touchez pour envoyer"
-          : "Maintenir pour parler"
+  const caption = getCaption({
+    isSending,
+    isStarting: recorder.status === "starting",
+    isHolding,
+    isActive,
+    isCancelArmed,
+    isLive,
+    outgoing,
+    canTalkLive,
+  })
 
   const view = isSending ? "sending" : isHolding ? "hold" : isActive ? "locked" : "idle"
   const visibleProblem = recorder.error
@@ -211,7 +266,7 @@ export function VoiceDock({
                 recorder.clearError()
               }}
               onRetry={() => {
-                if (visibleProblem.kind === "resend") void send(visibleProblem.recording)
+                if (visibleProblem.kind === "resend") void send(visibleProblem.recording, visibleProblem.id)
                 else {
                   setProblem(null)
                   recorder.clearError()
@@ -225,7 +280,7 @@ export function VoiceDock({
         <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
           <DockSide side="left" view={view}>
             {view === "idle" && <div className="flex items-center gap-0.5">{leading}</div>}
-            {view === "hold" && <RecordingTimer elapsedMs={recorder.elapsedMs} />}
+            {view === "hold" && <RecordingTimer elapsedMs={recorder.elapsedMs} isLive={isLive} />}
             {(view === "locked" || view === "sending") && (
               <div className="flex items-center gap-1">
                 <AnimateIcon animateOnHover animateOnTap asChild>
@@ -241,7 +296,7 @@ export function VoiceDock({
                     <Delete02 size={18} />
                   </Button>
                 </AnimateIcon>
-                {view === "locked" && <RecordingTimer elapsedMs={recorder.elapsedMs} />}
+                {view === "locked" && <RecordingTimer elapsedMs={recorder.elapsedMs} isLive={isLive} />}
               </div>
             )}
           </DockSide>
@@ -250,7 +305,8 @@ export function VoiceDock({
             tone={tone}
             icon={icon}
             getLevel={getLevel}
-            isBreathing={view === "idle" && !isSpeaking}
+            isBreathing={view === "idle" && !isSpeaking && !isHearingLive}
+            hasAudience={view === "idle" && canTalkLive}
             isHolding={isHolding}
             lockProgress={pushToTalk.lockProgress}
             isCancelArmed={isCancelArmed}
@@ -262,7 +318,9 @@ export function VoiceDock({
                 ? { onClick: () => void finish(), "aria-label": "Envoyer le message vocal" }
                 : {
                     ...pushToTalk.buttonProps,
-                    "aria-label": "Maintenir pour parler (appui simple : mains libres)",
+                    "aria-label": canTalkLive
+                      ? `Maintenir pour parler en direct — ${formatPresent(talkie.audience)} (appui simple : mains libres)`
+                      : "Maintenir pour parler (appui simple : mains libres)",
                   }
             }
           />
@@ -301,11 +359,41 @@ export function VoiceDock({
   )
 }
 
+interface CaptionState {
+  isSending: boolean
+  isStarting: boolean
+  isHolding: boolean
+  isActive: boolean
+  isCancelArmed: boolean
+  isLive: boolean
+  outgoing: OutgoingTalk | null
+  /** Quelqu'un a la conversation ouverte : il vous entendrait en direct. */
+  canTalkLive: boolean
+}
+
+/** La consigne sous le bouton micro : ce que fait le geste, et qui vous entend. */
+function getCaption(state: CaptionState) {
+  const { isSending, isStarting, isHolding, isActive, isCancelArmed, isLive, outgoing } = state
+
+  if (isSending) return "Envoi…"
+  if (isStarting) return "Ouverture du micro…"
+  if (isHolding && isCancelArmed) return "Relâchez pour annuler"
+  if (isLive && outgoing) return `En direct · ${formatHearers(outgoing.listeners)}`
+  if (isActive && outgoing?.status === "busy" && outgoing.speaker) {
+    return `${outgoing.speaker.name} parle · votre vocal suivra`
+  }
+  if (isHolding) return "Relâchez pour envoyer"
+  if (isActive) return "Verrouillé · touchez pour envoyer"
+  return state.canTalkLive ? "Maintenir pour parler en direct" : "Maintenir pour parler"
+}
+
 interface MicButtonProps {
   tone: VoiceHaloTone
   icon: MicIcon
   getLevel?: () => number
   isBreathing: boolean
+  /** Quelqu'un est là pour vous entendre en direct : un point « présent » sur l'orbe. */
+  hasAudience: boolean
   isHolding: boolean
   /** Avancée du glissement vers le haut (0 à 1), qui verrouille l'enregistrement. */
   lockProgress: MotionValue<number>
@@ -324,6 +412,7 @@ function MicButton({
   icon,
   getLevel,
   isBreathing,
+  hasAudience,
   isHolding,
   lockProgress,
   isCancelArmed,
@@ -377,6 +466,22 @@ function MicButton({
             </button>
           </AnimateIcon>
         </motion.div>
+
+        {/* Quelqu'un est là : maintenir, c'est lui parler en direct. */}
+        <AnimatePresence>
+          {hasAudience && (
+            <motion.span
+              key="audience"
+              aria-hidden
+              initial={{ opacity: 0, scale: scale.icon }}
+              animate={{ opacity: 1, scale: 1, transition: pop }}
+              exit={{ opacity: 0, scale: scale.icon, transition: swap }}
+              className="pointer-events-none absolute top-0.5 right-0.5 grid size-4 place-items-center rounded-full bg-background shadow-sm"
+            >
+              <LiveDot className="size-2.5" />
+            </motion.span>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       <span className="relative grid h-4 place-items-center">
@@ -472,7 +577,10 @@ function DockSide({
   )
 }
 
-function RecordingTimer({ elapsedMs }: { elapsedMs: number }) {
+/** Chronomètre de l'enregistrement ; en direct, la mention « Direct » s'y ajoute. */
+function RecordingTimer({ elapsedMs, isLive }: { elapsedMs: number; isLive: boolean }) {
+  const swap = useTempoTransition(transition.swap)
+
   return (
     <span className="flex items-center gap-2 px-1">
       <span
@@ -480,6 +588,19 @@ function RecordingTimer({ elapsedMs }: { elapsedMs: number }) {
         className="size-2.5 shrink-0 rounded-full bg-destructive motion-safe:animate-pulse"
       />
       <time className="text-sm font-medium tabular-nums">{formatDuration(elapsedMs)}</time>
+      <AnimatePresence initial={false}>
+        {isLive && (
+          <motion.span
+            key="live"
+            initial={{ opacity: 0, scale: scale.icon, filter: blur.icon }}
+            animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: swap }}
+            exit={{ opacity: 0, scale: scale.icon, filter: blur.icon, transition: swap }}
+            className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] leading-none font-semibold tracking-wide text-white uppercase"
+          >
+            Direct
+          </motion.span>
+        )}
+      </AnimatePresence>
     </span>
   )
 }

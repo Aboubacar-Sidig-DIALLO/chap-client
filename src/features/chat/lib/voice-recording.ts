@@ -1,3 +1,4 @@
+import { closeAudioContext } from "@/lib/audio-context"
 import type { VoiceMetadata } from "../types"
 import { WAVEFORM_BARS } from "./config"
 
@@ -141,11 +142,11 @@ export async function startVoiceRecording({
     onTick({ elapsedMs: performance.now() - startedAt, level })
   }, TICK_MS)
 
-  /** Coupe le micro (son voyant s'éteint) et libère l'analyse. */
+  /** Coupe le micro (son voyant s'éteint) et libère l'analyse ; sans effet si déjà fait. */
   function release() {
     clearInterval(timer)
     stream.getTracks().forEach((track) => track.stop())
-    void audioContext.close()
+    closeAudioContext(audioContext)
   }
 
   return {

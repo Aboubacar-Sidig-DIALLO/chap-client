@@ -19,6 +19,8 @@ import { Mic } from "@/components/animate-ui/icons/hugeicons/mic"
 import { Button } from "@/components/ui/button"
 import { MessageGroup } from "@/components/ui/message"
 import { CallLogEntry } from "@/features/call/components/call-log-entry"
+import { LiveTalkBubble } from "@/features/talkie/components/live-talk-bubble"
+import { useTalkie } from "@/features/talkie/components/talkie-provider"
 import { usePageVisible } from "../hooks/use-page-visible"
 import { useStickToBottom } from "../hooks/use-stick-to-bottom"
 import type { ReactionEmoji } from "../lib/config"
@@ -60,6 +62,11 @@ export function MessageList({
   onRetry,
   onReact,
 }: MessageListProps) {
+  // Celui qui parle en direct a sa bulle « en direct » : pas de « enregistre un vocal… » en plus.
+  const { incoming: liveTalk } = useTalkie()
+  const otherActivity = liveTalk
+    ? activeUsers.filter((item) => item.user.id !== liveTalk.user.id)
+    : activeUsers
   const sections = groupMessages(messages)
   const lastMessage = messages[messages.length - 1]
   // Les traces de direct n'ont pas d'accusé de lecture : on les écarte.
@@ -78,7 +85,7 @@ export function MessageList({
   const { containerRef, contentRef, isAtBottom, scrollToBottom, handleScroll } =
     useStickToBottom<HTMLDivElement>({
       isReady: isHistoryLoaded,
-      trigger: `${lastMessage?.id}:${activeUsers.length}`,
+      trigger: `${lastMessage?.id}:${otherActivity.length}:${liveTalk?.id}`,
       force: lastMessage?.author.id === currentUserId,
     })
 
@@ -168,7 +175,18 @@ export function MessageList({
               )}
 
               <AnimatePresence initial={false}>
-                {activeUsers.length > 0 && (
+                {liveTalk && (
+                  <motion.div
+                    key={`live-${liveTalk.id}`}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0, transition: { ...rise, opacity: fade } }}
+                    exit={{ opacity: 0, transition: fade }}
+                    className="mt-4"
+                  >
+                    <LiveTalkBubble showAuthor={!isDirect} />
+                  </motion.div>
+                )}
+                {otherActivity.length > 0 && (
                   <motion.div
                     key="typing"
                     initial={{ opacity: 0, y: 8 }}
@@ -176,7 +194,7 @@ export function MessageList({
                     exit={{ opacity: 0, transition: fade }}
                     className="mt-4"
                   >
-                    <TypingIndicator activeUsers={activeUsers} showAuthor={!isDirect} />
+                    <TypingIndicator activeUsers={otherActivity} showAuthor={!isDirect} />
                   </motion.div>
                 )}
               </AnimatePresence>

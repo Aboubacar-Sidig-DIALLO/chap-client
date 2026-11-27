@@ -35,7 +35,8 @@ import { VoiceDock } from "./voice-dock"
 const ICON_BUTTON_CLASS = "size-10 sm:size-9"
 
 interface ChatComposerProps {
-  onSend: (content: string, attachments: Attachment[]) => void
+  /** `id` : fixé à l'avance pour un vocal parlé en direct (talkie-walkie). */
+  onSend: (content: string, attachments: Attachment[], id?: string) => void
   onTyping?: () => void
   /** Prévient les autres participants qu'un vocal s'enregistre. */
   onRecordingChange?: (isRecording: boolean) => void
@@ -439,8 +440,9 @@ function ComposerHint({
               </>
             ) : (
               <>
-                Maintenez le micro pour parler, relâchez pour envoyer · glissez vers le haut pour
-                verrouiller, vers la gauche pour annuler · <kbd className={kbd}>Échap</kbd> annule
+                Maintenez le micro pour parler (en direct si quelqu&apos;un est là), relâchez pour
+                envoyer · glissez vers le haut pour verrouiller, vers la gauche pour annuler ·{" "}
+                <kbd className={kbd}>Échap</kbd> annule
               </>
             ),
         }
