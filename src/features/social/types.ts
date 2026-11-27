@@ -116,6 +116,8 @@ export interface SocialServerEvents {
   "social:changed": (event: { notice: SocialNotice | null }) => void
   /** Nouveau message dans une conversation privée ou de groupe (jamais son contenu). */
   "social:message": (event: MessageNotice) => void
+  /** Un message annoncé n'est plus à lire (retiré ou supprimé) : la pastille le décompte. */
+  "social:message-removed": (event: MessageRemovedNotice) => void
   /** Un ami arrive ou quitte l'application. */
   "presence:changed": (event: PresenceChange) => void
   /** Un appel commence : il sonne chez les autres membres. */
@@ -152,6 +154,16 @@ export type ConversationTarget =
 export interface MessageNotice {
   conversation: ConversationTarget
   from: PublicUser
+  /** Pour le décompter s'il est retiré, et l'oublier à son expiration. */
+  messageId: string
+  /** Date ISO 8601 à laquelle le message disparaît. */
+  expiresAt: string
+}
+
+/** Un message annoncé a été retiré par son auteur ou supprimé par un modérateur. */
+export interface MessageRemovedNotice {
+  conversation: ConversationTarget
+  messageId: string
 }
 
 /** Clé d'une conversation pour compter ses messages non lus. */

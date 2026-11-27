@@ -1,9 +1,18 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { playSound } from "@/components/ui-sounds"
+import { EXPIRY_CHECK_INTERVAL_MS } from "@/features/chat/lib/config"
 import { getErrorMessage } from "@/lib/api"
 import { socialApi } from "../lib/api"
+import {
+  addUnread,
+  clearUnread,
+  countUnread,
+  removeUnread,
+  withoutExpired,
+  type UnreadByConversation,
+} from "../lib/unread"
 import {
   conversationKey,
   type FriendsOverview,
@@ -45,13 +54,22 @@ export function useSocial(activeKey: string | null = null) {
   const [error, setError] = useState<string | null>(null)
   const [announced, setAnnounced] = useState<AnnouncedNotice | null>(null)
   /** Messages reçus depuis l'arrivée sur l'accueil, par conversation (voir `conversationKey`). */
-  const [unread, setUnread] = useState<Readonly<Record<string, number>>>({})
+  const [unread, setUnread] = useState<UnreadByConversation>({})
   // Ouvrir une conversation la marque comme lue (état ajusté pendant le rendu).
   const [openedKey, setOpenedKey] = useState(activeKey)
   if (activeKey !== openedKey) {
     setOpenedKey(activeKey)
-    if (activeKey && unread[activeKey]) setUnread((current) => ({ ...current, [activeKey]: 0 }))
+    if (activeKey) setUnread((current) => clearUnread(current, activeKey))
   }
+
+  // Application de l'instant : un message expiré a disparu, il ne compte plus.
+  useEffect(() => {
+    const interval = setInterval(
+      () => setUnread((current) => withoutExpired(current, Date.now())),
+      EXPIRY_CHECK_INTERVAL_MS
+    )
+    return () => clearInterval(interval)
+  }, [])
   /** Numéro du dernier chargement lancé : une réponse dépassée est ignorée. */
   const latestLoadRef = useRef(0)
   const noticeCountRef = useRef(0)
@@ -83,8 +101,16 @@ export function useSocial(activeKey: string | null = null) {
     onMessage: (notice) => {
       const key = conversationKey(notice.conversation)
       if (key === activeKey) return
-      setUnread((current) => ({ ...current, [key]: (current[key] ?? 0) + 1 }))
+      const message = { id: notice.messageId, expiresAt: Date.parse(notice.expiresAt) }
+      setUnread((current) => addUnread(current, key, message))
       announce({ type: "message", ...notice })
+    },
+    // Retiré par son auteur (ou supprimé) avant d'être lu : décompté, et son annonce s'efface.
+    onMessageRemoved: ({ conversation, messageId }) => {
+      setUnread((current) => removeUnread(current, conversationKey(conversation), messageId))
+      setAnnounced((current) =>
+        current?.notice.type === "message" && current.notice.messageId === messageId ? null : current
+      )
     },
     // Présence d'un ami : mise à jour sur place, sans recharger les listes.
     onPresence: ({ userId, online, lastSeenAt }) => {
@@ -162,7 +188,7 @@ export function useSocial(activeKey: string | null = null) {
     announced,
     dismissAnnounced: () => setAnnounced(null),
     /** Nombre de messages non lus d'une conversation reçus sur l'accueil. */
-    unreadCount: (key: string) => unread[key] ?? 0,
+    unreadCount: (key: string) => countUnread(unread, key),
     reload,
     addFriend,
     removeFriend,

@@ -2,7 +2,14 @@
 
 import { useEffect, useEffectEvent } from "react"
 import { acquireSocialSocket, releaseSocialSocket } from "../lib/socket"
-import type { CallChange, CallInvite, MessageNotice, PresenceChange, SocialNotice } from "../types"
+import type {
+  CallChange,
+  CallInvite,
+  MessageNotice,
+  MessageRemovedNotice,
+  PresenceChange,
+  SocialNotice,
+} from "../types"
 
 interface SocialEventHandlers {
   /**
@@ -14,6 +21,8 @@ interface SocialEventHandlers {
   onChange?: (notice: SocialNotice | null) => void
   /** Un ami ou un groupe vient d'écrire (le contenu n'est pas transmis). */
   onMessage?: (notice: MessageNotice) => void
+  /** Un message annoncé a été retiré ou supprimé : il n'est plus à lire. */
+  onMessageRemoved?: (notice: MessageRemovedNotice) => void
   /** Un ami arrive ou quitte l'application. */
   onPresence?: (change: PresenceChange) => void
   /** Un appel commence dans une de vos conversations : il sonne. */
@@ -34,6 +43,9 @@ export function useSocialEvents(handlers: SocialEventHandlers) {
   const handleConnect = useEffectEvent(() => handlers.onConnect?.())
   const handleChange = useEffectEvent((notice: SocialNotice | null) => handlers.onChange?.(notice))
   const handleMessage = useEffectEvent((notice: MessageNotice) => handlers.onMessage?.(notice))
+  const handleMessageRemoved = useEffectEvent((notice: MessageRemovedNotice) =>
+    handlers.onMessageRemoved?.(notice)
+  )
   const handlePresence = useEffectEvent((change: PresenceChange) => handlers.onPresence?.(change))
   const handleCallStarted = useEffectEvent((invite: CallInvite) => handlers.onCallStarted?.(invite))
   const handleCallChanged = useEffectEvent((change: CallChange) => handlers.onCallChanged?.(change))
@@ -46,6 +58,7 @@ export function useSocialEvents(handlers: SocialEventHandlers) {
     const onConnectError = (error: Error) => handleConnectError(error)
     const onChange = ({ notice }: { notice: SocialNotice | null }) => handleChange(notice)
     const onMessage = (notice: MessageNotice) => handleMessage(notice)
+    const onMessageRemoved = (notice: MessageRemovedNotice) => handleMessageRemoved(notice)
     const onPresence = (change: PresenceChange) => handlePresence(change)
     const onCallStarted = (invite: CallInvite) => handleCallStarted(invite)
     const onCallChanged = (change: CallChange) => handleCallChanged(change)
@@ -55,6 +68,7 @@ export function useSocialEvents(handlers: SocialEventHandlers) {
     socket.on("connect_error", onConnectError)
     socket.on("social:changed", onChange)
     socket.on("social:message", onMessage)
+    socket.on("social:message-removed", onMessageRemoved)
     socket.on("presence:changed", onPresence)
     socket.on("call:started", onCallStarted)
     socket.on("call:changed", onCallChanged)
@@ -67,6 +81,7 @@ export function useSocialEvents(handlers: SocialEventHandlers) {
       socket.off("connect_error", onConnectError)
       socket.off("social:changed", onChange)
       socket.off("social:message", onMessage)
+      socket.off("social:message-removed", onMessageRemoved)
       socket.off("presence:changed", onPresence)
       socket.off("call:started", onCallStarted)
       socket.off("call:changed", onCallChanged)
