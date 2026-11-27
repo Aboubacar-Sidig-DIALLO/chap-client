@@ -4,10 +4,13 @@ import { createContext, use, useEffect, useEffectEvent, useRef, useState } from 
 import { createAudioMeter, elementSource, type AudioMeter } from "@/components/voice-audio"
 import { closeAudioContext } from "@/lib/audio-context"
 import { isPlayableAudio } from "../lib/attachments"
+import {
+  nextPlaybackRate,
+  readPlaybackRate,
+  storePlaybackRate,
+  type PlaybackRate,
+} from "../lib/playback-rate"
 import type { ChatMessage, ChatUser, LiveListener } from "../types"
-
-const PLAYBACK_RATES = [1, 1.5, 2] as const
-export type PlaybackRate = (typeof PLAYBACK_RATES)[number]
 
 /** Ce qu'un lecteur expose au coordinateur. */
 export interface PlayerControls {
@@ -23,10 +26,27 @@ export interface NowPlaying {
   isPlaying: boolean
 }
 
+/** Où en est la lecture enchaînée : « vocal 2 sur 5 ». */
+export interface SequenceProgress {
+  position: number
+  total: number
+}
+
 interface VoicePlaybackContextValue {
+  /** Vitesse de lecture, retenue par l'appareil. */
   rate: PlaybackRate
   cycleRate: () => void
   nowPlaying: NowPlaying | null
+  /** Vocaux reçus pas encore écoutés, dans toute la conversation. */
+  unheardCount: number
+  /** Écoute tous les vocaux non écoutés à la suite, du plus ancien au plus récent. */
+  playUnheard: () => void
+  /** Lecture enchaînée en cours ; `null` sinon. */
+  sequence: SequenceProgress | null
+  /** Passe au vocal non écouté suivant (celui en cours reste « non écouté »). */
+  skipToNext: () => void
+  /** Il reste un vocal non écouté après celui en cours. */
+  hasNext: boolean
   /** Vocal reçu que l'utilisateur n'a pas encore écouté. */
   isUnheard: (message: ChatMessage) => boolean
   /** Participants qui écoutent ce message à l'instant même. */
@@ -74,9 +94,11 @@ interface VoicePlaybackProviderProps {
 
 /**
  * Coordonne l'écoute dans la conversation : un seul vocal à la fois, une
- * vitesse commune, les accusés « en écoute » puis « écouté », et l'enchaînement
- * automatique sur le vocal suivant tant qu'il n'a pas été écouté (comme une
- * messagerie vocale).
+ * vitesse commune (retenue par l'appareil), les accusés « en écoute » puis
+ * « écouté », et l'enchaînement :
+ * - un vocal fini passe au suivant s'il n'a pas été écouté (une suite de vocaux) ;
+ * - « Écouter les vocaux » (`playUnheard`) joue tous les non écoutés à la
+ *   suite, même séparés par d'autres messages, avec sa progression (`sequence`).
  */
 export function VoicePlaybackProvider({
   messages,
@@ -90,8 +112,10 @@ export function VoicePlaybackProvider({
   const playersRef = useRef(new Map<string, PlayerControls>())
   const audioContextRef = useRef<AudioContext | null>(null)
   const meterRef = useRef<AudioMeter | null>(null)
-  const [rate, setRate] = useState<PlaybackRate>(1)
+  const [rate, setRate] = useState<PlaybackRate>(readPlaybackRate)
   const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null)
+  /** Lecture enchaînée (« Écouter les vocaux ») : nombre de vocaux déjà passés. */
+  const [sequence, setSequence] = useState<{ done: number } | null>(null)
   // Fonctions stables : lues à chaque image, elles ne relancent aucune boucle d'animation.
   const [readers] = useState(() => ({
     getLevel: () => meterRef.current?.getLevel() ?? 0,
@@ -194,10 +218,32 @@ export function VoicePlaybackProvider({
     )
   }
 
+  const unheardItems = queue.filter((item) => isUnheard(item.message))
+  const currentIndex = nowPlaying
+    ? queue.findIndex((item) => item.attachmentId === nowPlaying.attachmentId)
+    : -1
+
+  /**
+   * Le vocal qui suit celui d'indice `index` : en lecture enchaînée, le
+   * prochain non écouté où qu'il soit ; sinon, seulement le suivant immédiat
+   * s'il n'a pas été écouté (une suite de vocaux).
+   */
+  function nextAfter(index: number) {
+    if (index === -1) return undefined
+    if (sequence) return queue.slice(index + 1).find((item) => isUnheard(item.message))
+    const next = queue[index + 1]
+    return next && isUnheard(next.message) ? next : undefined
+  }
+
+  function playItem(attachmentId: string) {
+    const player = playersRef.current.get(attachmentId)
+    player?.reveal()
+    player?.play()
+  }
+
   function handleEnded(attachmentId: string) {
     const index = queue.findIndex((item) => item.attachmentId === attachmentId)
     const current = queue[index]
-    const next = queue[index + 1]
 
     // « Écouté » seulement une fois le vocal entendu jusqu'au bout.
     if (current && isUnheard(current.message)) {
@@ -205,15 +251,43 @@ export function VoicePlaybackProvider({
       onListened(current.message)
     }
 
-    // Le vocal suivant, s'il n'a pas encore été écouté, enchaîne de lui-même.
-    if (index !== -1 && next && isUnheard(next.message)) {
-      const player = playersRef.current.get(next.attachmentId)
-      player?.reveal()
-      player?.play()
+    const next = nextAfter(index)
+    if (next) {
+      setSequence((current) => current && { done: current.done + 1 })
+      playItem(next.attachmentId)
       return
     }
+    setSequence(null)
     setNowPlaying(null)
   }
+
+  function playUnheard() {
+    const first = unheardItems[0]
+    if (!first) return
+    if (nowPlaying && nowPlaying.attachmentId !== first.attachmentId) {
+      playersRef.current.get(nowPlaying.attachmentId)?.pause()
+    }
+    setSequence({ done: 0 })
+    playItem(first.attachmentId)
+  }
+
+  function skipToNext() {
+    const next = queue.slice(currentIndex + 1).find((item) => isUnheard(item.message))
+    if (!nowPlaying || !next) return
+    playersRef.current.get(nowPlaying.attachmentId)?.pause()
+    setSequence((current) => ({ done: (current?.done ?? 0) + 1 }))
+    playItem(next.attachmentId)
+  }
+
+  // « Vocal 2 sur 5 » : ceux déjà passés, celui en cours, et les non écoutés qui suivent.
+  const remainingAfter =
+    currentIndex === -1
+      ? 0
+      : queue.slice(currentIndex + 1).filter((item) => isUnheard(item.message)).length
+  const sequenceProgress =
+    sequence && nowPlaying
+      ? { position: sequence.done + 1, total: sequence.done + 1 + remainingAfter }
+      : null
 
   function handleProgress(attachmentId: string, ratio: number) {
     const item = findItem(attachmentId)
@@ -231,13 +305,14 @@ export function VoicePlaybackProvider({
 
   function stop() {
     if (nowPlaying) playersRef.current.get(nowPlaying.attachmentId)?.pause()
+    setSequence(null)
     setNowPlaying(null)
   }
 
   function cycleRate() {
-    setRate(
-      (current) => PLAYBACK_RATES[(PLAYBACK_RATES.indexOf(current) + 1) % PLAYBACK_RATES.length]
-    )
+    const next = nextPlaybackRate(rate)
+    storePlaybackRate(next)
+    setRate(next)
   }
 
   return (
@@ -246,6 +321,11 @@ export function VoicePlaybackProvider({
         rate,
         cycleRate,
         nowPlaying,
+        unheardCount: unheardItems.length,
+        playUnheard,
+        sequence: sequenceProgress,
+        skipToNext,
+        hasNext: remainingAfter > 0,
         isUnheard,
         getLiveListeners,
         register,

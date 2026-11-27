@@ -16,6 +16,7 @@ import {
 } from "@animate-ui/react/utils/motion"
 import { ArrowDown02 } from "@/components/animate-ui/icons/hugeicons/arrow-down-02"
 import { Mic } from "@/components/animate-ui/icons/hugeicons/mic"
+import { Play } from "@/components/animate-ui/icons/hugeicons/play"
 import { Button } from "@/components/ui/button"
 import { MessageGroup } from "@/components/ui/message"
 import { CallLogEntry } from "@/features/call/components/call-log-entry"
@@ -29,6 +30,7 @@ import { groupMessages } from "../lib/group-messages"
 import type { ActiveUser, ChatMessage, ReadReceipt } from "../types"
 import { ChatMessageGroup } from "./chat-message-group"
 import { TypingIndicator } from "./typing-indicator"
+import { useVoicePlayback } from "./voice-playback"
 import { UnreadBadge } from "./unread-badge"
 
 interface MessageListProps {
@@ -62,6 +64,10 @@ export function MessageList({
   onRetry,
   onReact,
 }: MessageListProps) {
+  // Des vocaux attendent et rien ne joue : un appui suffit à tous les écouter.
+  const playback = useVoicePlayback()
+  const showListenAll = playback.unheardCount > 0 && playback.nowPlaying === null
+
   // Celui qui parle en direct a sa bulle « en direct » : pas de « enregistre un vocal… » en plus.
   const { incoming: liveTalk } = useTalkie()
   const otherActivity = liveTalk
@@ -202,37 +208,76 @@ export function MessageList({
           </div>
         </ScrollFade>
 
-        {/* Apparaît et disparaît sur place (`scale.action` + `blur.icon`). */}
-        <AnimatePresence>
-          {!isAtBottom && (
-            <motion.div
-              key="jump"
-              initial={{ opacity: 0, scale: scale.action, filter: blur.icon }}
-              animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: swap }}
-              exit={{ opacity: 0, scale: scale.action, filter: blur.icon, transition: swap }}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2"
-            >
-              <AnimateIcon animateOnHover animateOnTap asChild>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label={
-                    unreadCount > 0
-                      ? `${unreadCount} message${unreadCount > 1 ? "s" : ""} non lu${unreadCount > 1 ? "s" : ""}, aller aux derniers messages`
-                      : "Aller aux derniers messages"
-                  }
-                  onClick={() => scrollToBottom()}
-                  className="relative size-10 bg-background shadow-md sm:size-8"
-                >
-                  <ArrowDown02 size={18} />
-                  <UnreadBadge count={unreadCount} />
-                </Button>
-              </AnimateIcon>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Raccourcis du bas : écouter les vocaux en attente, revenir aux derniers messages.
+            Ils apparaissent sur place (`scale.action` + `blur.icon`) et se décalent en douceur. */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center gap-2">
+          <AnimatePresence mode="popLayout">
+            {showListenAll && (
+              <motion.div
+                key="listen-all"
+                layout
+                initial={{ opacity: 0, scale: scale.action, filter: blur.icon }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: swap }}
+                exit={{ opacity: 0, scale: scale.action, filter: blur.icon, transition: swap }}
+                className="pointer-events-auto"
+              >
+                <ListenAllButton count={playback.unheardCount} onClick={playback.playUnheard} />
+              </motion.div>
+            )}
+            {!isAtBottom && (
+              <motion.div
+                key="jump"
+                layout
+                initial={{ opacity: 0, scale: scale.action, filter: blur.icon }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: swap }}
+                exit={{ opacity: 0, scale: scale.action, filter: blur.icon, transition: swap }}
+                className="pointer-events-auto"
+              >
+                <AnimateIcon animateOnHover animateOnTap asChild>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    aria-label={
+                      unreadCount > 0
+                        ? `${unreadCount} message${unreadCount > 1 ? "s" : ""} non lu${unreadCount > 1 ? "s" : ""}, aller aux derniers messages`
+                        : "Aller aux derniers messages"
+                    }
+                    onClick={() => scrollToBottom()}
+                    className="relative size-10 bg-background shadow-md sm:size-8"
+                  >
+                    <ArrowDown02 size={18} />
+                    <UnreadBadge count={unreadCount} />
+                  </Button>
+                </AnimateIcon>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </ReducedMotionConfig>
+  )
+}
+
+/** « Écouter 3 vocaux » : tous les vocaux non écoutés, à la suite, d'un seul appui. */
+function ListenAllButton({ count, onClick }: { count: number; onClick: () => void }) {
+  const label = count === 1 ? "Écouter le vocal" : `Écouter ${count} vocaux`
+
+  return (
+    <AnimateIcon animateOnHover animateOnTap asChild>
+      <Button
+        type="button"
+        onClick={onClick}
+        aria-label={
+          count === 1
+            ? "Écouter le vocal non écouté"
+            : `Écouter les ${count} vocaux non écoutés à la suite`
+        }
+        className="h-10 gap-2 rounded-full bg-read pr-4 pl-3 text-white shadow-md hover:bg-read/90 sm:h-8"
+      >
+        <Play size={14} fill="currentColor" />
+        <span className="tabular-nums">{label}</span>
+      </Button>
+    </AnimateIcon>
   )
 }
 

@@ -19,6 +19,7 @@ import { WAVEFORM_BARS } from "../lib/config"
 import { formatDuration } from "../lib/format"
 import type { Attachment, ChatMessage } from "../types"
 import { getListenState, LISTEN_TONE, ListenStatus } from "./listen-status"
+import { PlaybackRateButton } from "./playback-rate-button"
 import { useVoicePlayback } from "./voice-playback"
 import { Waveform } from "./waveform"
 
@@ -185,17 +186,14 @@ export function VoiceMessage({ attachment, message, isOwn }: VoiceMessageProps) 
           {/* L'accusé d'écoute n'a de sens qu'une fois le vocal parti. */}
           {listenState && <ListenStatus state={listenState} />}
 
-          <button
-            type="button"
+          <PlaybackRateButton
+            rate={playback.rate}
             onClick={playback.cycleRate}
-            aria-label={`Vitesse de lecture : ${playback.rate}×`}
             className={cn(
-              "press ml-auto min-w-8 rounded-full px-1.5 py-px text-[11px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-current/40",
+              "ml-auto min-w-9 px-1.5 py-px text-[11px] focus-visible:ring-current/40",
               tone ? "bg-tone/15" : isOwn ? "bg-primary-foreground/15" : "bg-foreground/10"
             )}
-          >
-            {playback.rate}×
-          </button>
+          />
         </div>
       </div>
     </div>

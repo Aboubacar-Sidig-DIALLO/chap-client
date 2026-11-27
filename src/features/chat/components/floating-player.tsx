@@ -12,10 +12,11 @@ import {
 import { Cancel01 } from "@/components/animate-ui/icons/hugeicons/cancel-01"
 import { Pause } from "@/components/animate-ui/icons/hugeicons/pause"
 import { Play } from "@/components/animate-ui/icons/hugeicons/play"
-import { HeadphonesIcon } from "@hugeicons/core-free-icons"
+import { HeadphonesIcon, NextIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Float } from "@/components/float"
 import { Button } from "@/components/ui/button"
+import { PlaybackRateButton } from "./playback-rate-button"
 import { VoiceBars } from "./voice-bars"
 import { VoiceHalo } from "./voice-halo"
 import { useVoicePlayback } from "./voice-playback"
@@ -60,9 +61,23 @@ export function FloatingPlayer() {
 }
 
 function PlayerCard() {
-  const { nowPlaying, rate, cycleRate, toggleNowPlaying, stop, getLevel } = useVoicePlayback()
+  const {
+    nowPlaying,
+    rate,
+    cycleRate,
+    toggleNowPlaying,
+    stop,
+    getLevel,
+    sequence,
+    skipToNext,
+    hasNext,
+  } = useVoicePlayback()
   const swap = useTempoTransition(transition.swap)
   if (!nowPlaying) return null
+
+  const state = nowPlaying.isPlaying ? "En écoute" : "En pause"
+  // Lecture enchaînée : où l'on en est, plutôt que l'état seul.
+  const status = sequence && sequence.total > 1 ? `Vocal ${sequence.position} sur ${sequence.total}` : state
 
   return (
     <div className="flex w-72 max-w-[calc(100vw-3rem)] items-center gap-2 rounded-2xl border bg-card/95 p-1.5 pr-2 shadow-xl backdrop-blur-lg">
@@ -78,9 +93,20 @@ function PlayerCard() {
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{nowPlaying.author.name}</p>
-        <p className="text-xs text-muted-foreground">
-          {nowPlaying.isPlaying ? "En écoute" : "En pause"}
-        </p>
+        <span className="relative grid">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={status}
+              role="status"
+              initial={{ opacity: 0, filter: blur.icon }}
+              animate={{ opacity: 1, filter: "blur(0px)", transition: swap }}
+              exit={{ opacity: 0, filter: blur.icon, transition: swap }}
+              className="truncate text-xs text-muted-foreground tabular-nums"
+            >
+              {status}
+            </motion.span>
+          </AnimatePresence>
+        </span>
       </div>
 
       <ReducedMotionConfig>
@@ -112,16 +138,34 @@ function PlayerCard() {
             </span>
           </Button>
         </AnimateIcon>
+
+        {/* Un autre vocal non écouté attend : on peut y passer directement. */}
+        <AnimatePresence initial={false}>
+          {hasNext && (
+            <motion.span
+              key="next"
+              initial={{ opacity: 0, scale: scale.icon, filter: blur.icon }}
+              animate={{ opacity: 1, scale: 1, filter: "blur(0px)", transition: swap }}
+              exit={{ opacity: 0, scale: scale.icon, filter: blur.icon, transition: swap }}
+              className="inline-flex"
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={skipToNext}
+                aria-label="Vocal suivant"
+                className="size-9"
+              >
+                <HugeiconsIcon icon={NextIcon} size={16} strokeWidth={2} />
+              </Button>
+            </motion.span>
+          )}
+        </AnimatePresence>
       </ReducedMotionConfig>
 
-      <button
-        type="button"
-        onClick={cycleRate}
-        aria-label={`Vitesse de lecture : ${rate}×`}
-        className="press min-w-9 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-      >
-        {rate}×
-      </button>
+      <PlaybackRateButton rate={rate} onClick={cycleRate} className="min-w-10 px-2 py-0.5 text-xs" />
+
 
       <AnimateIcon animateOnHover animateOnTap asChild>
         <Button
