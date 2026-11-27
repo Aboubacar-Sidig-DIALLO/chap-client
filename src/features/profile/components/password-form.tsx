@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { CheckmarkCircle02Icon } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { FormError } from "@/features/auth/components/form-error"
@@ -11,6 +9,7 @@ import { type AuthError, getAuthErrorMessage } from "@/features/auth/lib/errors"
 import { MIN_PASSWORD_LENGTH, passwordProblem } from "@/features/auth/lib/password"
 import { authClient } from "@/lib/auth-client"
 import { FORM_CARD_CLASS } from "./profile-styles"
+import { SavedStatus } from "./saved-status"
 
 const ERROR_ID = "password-error"
 
@@ -85,17 +84,12 @@ export function PasswordForm() {
         autoComplete="new-password"
         aria-describedby={error ? ERROR_ID : undefined}
       />
-      <FormError id={ERROR_ID}>
+      <FormError id={ERROR_ID} gap={12}>
         {error && (typeof error === "string" ? error : getAuthErrorMessage(error))}
       </FormError>
 
       <div className="flex items-center justify-end gap-3">
-        {status === "saved" && (
-          <p role="status" className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
-            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} strokeWidth={2} aria-hidden />
-            Modifié · autres appareils déconnectés
-          </p>
-        )}
+        <SavedStatus show={status === "saved"}>Modifié · autres appareils déconnectés</SavedStatus>
         <Button type="submit" disabled={!canSave} className="h-10 rounded-full px-5">
           {status === "saving" ? (
             <>

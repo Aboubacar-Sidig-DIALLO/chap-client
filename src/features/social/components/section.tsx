@@ -1,4 +1,7 @@
+"use client"
+
 import { useId } from "react"
+import { AnimatedItems } from "@/components/motion/animated-list"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 
 interface SectionProps {
@@ -45,11 +48,15 @@ export function Section({ title, icon, count, action, children }: SectionProps) 
   )
 }
 
-/** Liste de lignes : une carte à filets sur mobile, des lignes libres dans la barre latérale. */
+/**
+ * Liste de lignes : une carte à filets sur mobile, des lignes libres dans la
+ * barre latérale. Une ligne ajoutée y entre en fondu, une ligne retirée
+ * s'efface et les autres resserrent le rang (`ListRow`).
+ */
 export function SectionList({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="divide-y overflow-hidden rounded-3xl border bg-card md:flex md:flex-col md:gap-0.5 md:divide-y-0 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
-      {children}
+    <ul className="flex flex-col overflow-hidden rounded-3xl border bg-card md:gap-0.5 md:overflow-visible md:rounded-none md:border-0 md:bg-transparent">
+      <AnimatedItems>{children}</AnimatedItems>
     </ul>
   )
 }

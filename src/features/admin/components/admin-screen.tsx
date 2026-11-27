@@ -6,6 +6,7 @@ import { ArrowLeft01Icon, Cancel01Icon, UserAdd01Icon } from "@hugeicons/core-fr
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Effect } from "@animate-ui/react/primitives/effects/effect"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { Reveal } from "@/components/motion/reveal"
 import { Button, buttonVariants } from "@/components/ui/button"
 import type { SessionUser } from "@/features/auth/components/session-gate"
 import { ROUTES } from "@/features/auth/lib/routes"
@@ -120,7 +121,7 @@ export function AdminScreen({ currentUser }: { currentUser: SessionUser }) {
           onSortChange={setSort}
         />
 
-        {actionError && (
+        <Reveal show={actionError !== null} gap={16}>
           <div role="alert" className="flex items-center gap-3 rounded-2xl bg-destructive/10 py-2 pr-2 pl-4 text-sm text-destructive">
             <p className="flex-1">{actionError}</p>
             <Button
@@ -133,7 +134,7 @@ export function AdminScreen({ currentUser }: { currentUser: SessionUser }) {
               <HugeiconsIcon icon={Cancel01Icon} size={16} strokeWidth={2} />
             </Button>
           </div>
-        )}
+        </Reveal>
 
         {users.page ? (
           <>

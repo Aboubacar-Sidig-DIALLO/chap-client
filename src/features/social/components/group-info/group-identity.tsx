@@ -4,6 +4,7 @@ import { useRef, useState } from "react"
 import { Camera01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Dialog } from "@animate-ui/react/primitives/base-ui/dialog"
+import { Reveal } from "@/components/motion/reveal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
@@ -89,7 +90,7 @@ function GroupPhotoEditor({ group, run, onChange, onRemove }: GroupPhotoEditorPr
         </span>
       </button>
       <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="sr-only" tabIndex={-1} />
-      {group.photoUrl && (
+      <Reveal show={group.photoUrl !== null}>
         <Button
           variant="ghost"
           size="xs"
@@ -99,7 +100,7 @@ function GroupPhotoEditor({ group, run, onChange, onRemove }: GroupPhotoEditorPr
         >
           Retirer la photo
         </Button>
-      )}
+      </Reveal>
     </div>
   )
 }
@@ -138,8 +139,8 @@ function GroupNameEditor({ name, run, onRename }: GroupNameEditorProps) {
         enterKeyHint="done"
         className="h-11 border-transparent bg-transparent text-center text-xl font-semibold shadow-none hover:border-input focus-visible:border-ring md:text-xl"
       />
-      {isChanged && (
-        <div className="flex gap-2">
+      {/* Le nom change : « Annuler » et « Enregistrer » se déplient dessous. */}
+      <Reveal show={isChanged} className="flex gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={() => setDraft(name)} disabled={isSaving}>
             Annuler
           </Button>
@@ -147,8 +148,7 @@ function GroupNameEditor({ name, run, onRename }: GroupNameEditorProps) {
             {isSaving && <Spinner />}
             Enregistrer
           </Button>
-        </div>
-      )}
+      </Reveal>
     </form>
   )
 }

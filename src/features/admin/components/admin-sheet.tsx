@@ -3,6 +3,7 @@
 import { Dialog } from "@animate-ui/react/primitives/base-ui/dialog"
 import { SHEET_BACKDROP_CLASS, SheetHandle } from "@/components/confirm-dialog"
 import { cn } from "@/lib/utils"
+import { Reveal } from "@/components/motion/reveal"
 
 interface AdminSheetProps {
   open: boolean
@@ -43,12 +44,13 @@ export function AdminSheet({ open, onOpenChange, title, description, children }:
   )
 }
 
-/** Erreur d'un formulaire, annoncée aux lecteurs d'écran. */
+/** Erreur d'un formulaire, annoncée aux lecteurs d'écran ; elle se déplie sur place. */
 export function FormError({ message }: { message: string | null }) {
-  if (!message) return null
   return (
-    <p role="alert" className="rounded-2xl bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-      {message}
-    </p>
+    <Reveal show={message !== null} gap={16}>
+      <p role="alert" className="rounded-2xl bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+        {message}
+      </p>
+    </Reveal>
   )
 }

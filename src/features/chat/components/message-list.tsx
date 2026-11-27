@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
+import { CollapseOnExit } from "@/components/motion/collapse-on-exit"
 import { AnimateIcon } from "@animate-ui/react/icons"
 import { Effect } from "@animate-ui/react/primitives/effects/effect"
 import { ScrollFade } from "@animate-ui/react/primitives/effects/scroll-fade"
@@ -113,30 +114,35 @@ export function MessageList({
                 isHistoryLoaded && <EmptyState />
               ) : (
                 <div className="flex flex-col gap-6">
+                  <AnimatePresence initial={false}>
                   {sections.map((section) => (
-                    <section key={section.date} className="flex flex-col gap-4">
+                    <CollapseOnExit key={section.date}>
+                    <section className="flex flex-col gap-4">
                       <DaySeparator date={section.date} />
 
                       <MessageGroup className="gap-4">
+                        {/* Une suite de messages entièrement retirée se replie, sans à-coup. */}
+                        <AnimatePresence initial={false}>
                         {section.runs.map((run) => {
                           const first = run.messages[0]
 
                           // Une trace de direct est toujours seule dans sa suite.
                           if (first.call) {
                             return (
+                              <CollapseOnExit key={first.id}>
                               <CallLogEntry
-                                key={first.id}
                                 call={first.call}
                                 currentUserId={currentUserId}
                                 animateIn={historyIds !== null && !historyIds.has(first.id)}
                                 isLatest={first.id === latestCallId}
                               />
+                              </CollapseOnExit>
                             )
                           }
 
                           return (
+                            <CollapseOnExit key={first.id}>
                             <ChatMessageGroup
-                              key={first.id}
                               run={run}
                               isOwn={run.author.id === currentUserId}
                               showAuthor={!isDirect}
@@ -149,11 +155,15 @@ export function MessageList({
                               onRetry={onRetry}
                               onReact={onReact}
                             />
+                            </CollapseOnExit>
                           )
                         })}
+                        </AnimatePresence>
                       </MessageGroup>
                     </section>
+                    </CollapseOnExit>
                   ))}
+                  </AnimatePresence>
                 </div>
               )}
 

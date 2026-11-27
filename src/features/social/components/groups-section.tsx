@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { InformationCircleIcon, UserGroupIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { AutoHeight } from "@/components/motion/auto-height"
+import { Swap } from "@/components/motion/swap"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/features/auth/lib/routes"
 import { conversationKey, type GroupSummary, type PublicUser } from "../types"
@@ -56,6 +58,9 @@ export function GroupsSection({
       count={groups.length}
       action={<CreateGroupDialog {...createGroupDialog} friends={friends} onCreate={onCreate} />}
     >
+      {/* Premier groupe, dernier groupe quitté : la liste et l'invitation se fondent l'une dans l'autre. */}
+      <AutoHeight>
+      <Swap swapKey={groups.length === 0 ? "empty" : "list"}>
       {groups.length === 0 ? (
         <SectionEmpty
           icon={<HugeiconsIcon icon={UserGroupIcon} strokeWidth={2} />}
@@ -102,6 +107,8 @@ export function GroupsSection({
           })}
         </SectionList>
       )}
+      </Swap>
+      </AutoHeight>
     </Section>
     {infoGroupId && (
       <GroupInfoDialog

@@ -9,6 +9,7 @@ import { authClient } from "@/lib/auth-client"
 import { type AuthError, getAuthErrorMessage } from "../lib/errors"
 import { ROUTES } from "../lib/routes"
 import { isValidEmail, MAX_NAME_LENGTH, normalizeEmail, normalizeName } from "../lib/validation"
+import { Reveal } from "@/components/motion/reveal"
 import { FormError } from "./form-error"
 import { PasswordField } from "./password-field"
 
@@ -149,8 +150,8 @@ export function AuthForm({ mode, initialEmail = "" }: AuthFormProps) {
         />
       </label>
 
-      {needsPassword && (
-        <div className="flex flex-col gap-2">
+      {/* Compte administrateur : le mot de passe se dévoile sous l'adresse. */}
+      <Reveal show={needsPassword} gap={16} className="flex flex-col gap-2">
           <p role="status" className="rounded-2xl bg-muted px-4 py-2.5 text-sm text-muted-foreground">
             Compte administrateur : saisissez votre mot de passe.
           </p>
@@ -168,8 +169,7 @@ export function AuthForm({ mode, initialEmail = "" }: AuthFormProps) {
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? ERROR_ID : undefined}
           />
-        </div>
-      )}
+      </Reveal>
 
       <FormError id={ERROR_ID}>
         {error && (

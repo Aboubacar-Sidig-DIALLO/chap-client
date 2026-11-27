@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Add01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Dialog } from "@animate-ui/react/primitives/base-ui/dialog"
+import { Reveal } from "@/components/motion/reveal"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
@@ -123,11 +124,11 @@ function CreateGroupForm({
 
       <FriendPicker friends={friends} selectedIds={selectedIds} onToggle={toggle} isFull={isFull} />
 
-      {error && (
+      <Reveal show={error !== null} gap={16}>
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
-      )}
+      </Reveal>
 
       <Button type="submit" size="lg" disabled={!canSubmit} className="h-12 shrink-0 text-base sm:h-11">
         {isSubmitting ? (

@@ -9,6 +9,7 @@ import {
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { Swap } from "@/components/motion/swap"
 import { Switch } from "@/components/ui/switch"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { cn } from "@/lib/utils"
@@ -126,6 +127,8 @@ export function MemberSettingsView({
         <h3 id="member-permissions" className="px-1 text-sm font-medium">
           Autorisations
         </h3>
+        {/* Nommé ou destitué : les autorisations et leur explication se fondent l'une dans l'autre. */}
+        <Swap swapKey={isAdmin ? "admin" : "member"}>
         {isAdmin ? (
           <p className="rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground">
             Un administrateur n&apos;est jamais restreint.
@@ -139,6 +142,7 @@ export function MemberSettingsView({
             lockedHint={(action) => (group.permissions[action] ? null : "Réservé aux administrateurs pour tout le groupe")}
           />
         )}
+        </Swap>
       </section>
       {error}
 

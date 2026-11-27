@@ -2,6 +2,9 @@
 
 import { UserAdd01Icon, UserMultipleIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { AutoHeight } from "@/components/motion/auto-height"
+import { Reveal } from "@/components/motion/reveal"
+import { Swap } from "@/components/motion/swap"
 import { Button } from "@/components/ui/button"
 import { useNow } from "../hooks/use-now"
 import { byPresenceThenName } from "../lib/presence"
@@ -42,7 +45,8 @@ export function FriendsSection({
 
   return (
     <>
-      {incoming.length > 0 && (
+      {/* Les demandes reçues se déplient en tête, puis se replient une fois traitées. */}
+      <Reveal show={incoming.length > 0} gap="var(--home-gap)" gapSide="after">
         <Section title="Demandes reçues" icon={UserAdd01Icon} count={incoming.length}>
           <SectionList>
             {incoming.map((user) => (
@@ -62,9 +66,12 @@ export function FriendsSection({
             ))}
           </SectionList>
         </Section>
-      )}
+      </Reveal>
 
       <Section title="Amis" icon={UserMultipleIcon} count={friends.length}>
+        {/* Premier ami, dernier ami parti : la liste et l'invitation se fondent l'une dans l'autre. */}
+        <AutoHeight>
+        <Swap swapKey={friends.length === 0 && outgoing.length === 0 ? "empty" : "list"}>
         {friends.length === 0 && outgoing.length === 0 ? (
           <SectionEmpty
             icon={<HugeiconsIcon icon={UserAdd01Icon} strokeWidth={2} />}
@@ -110,6 +117,8 @@ export function FriendsSection({
             ))}
           </SectionList>
         )}
+        </Swap>
+        </AutoHeight>
       </Section>
     </>
   )

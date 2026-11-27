@@ -1,6 +1,8 @@
 "use client"
 
 import { Effect } from "@animate-ui/react/primitives/effects/effect"
+import { Reveal } from "@/components/motion/reveal"
+import { Swap } from "@/components/motion/swap"
 import { Button } from "@/components/ui/button"
 import type { SessionUser } from "@/features/auth/components/session-gate"
 import { PAGE_ENTRANCE } from "@/lib/motion"
@@ -25,8 +27,31 @@ interface HomeContentProps {
   createGroupDialog: DialogState
 }
 
-/** Sous la recherche : ses résultats dès qu'on tape un nom, sinon amis et groupes. */
-export function HomeContent({
+/**
+ * Sous la recherche : ses résultats dès qu'on tape un nom, sinon amis et
+ * groupes. Passer de l'un à l'autre (ou du chargement aux listes) se fait en
+ * fondu, sur place.
+ */
+export function HomeContent(props: HomeContentProps) {
+  const { search, social } = props
+  const view = search.isActive
+    ? "search"
+    : search.needsMoreCharacters
+      ? "hint"
+      : social.overview && social.groups
+        ? "sections"
+        : social.error
+          ? "error"
+          : "loading"
+
+  return (
+    <Swap swapKey={view}>
+      <HomeContentView {...props} />
+    </Swap>
+  )
+}
+
+function HomeContentView({
   user,
   activeKey,
   searchInput,
@@ -60,9 +85,10 @@ export function HomeContent({
   }
 
   return (
-    <Effect {...PAGE_ENTRANCE} className="flex flex-col gap-6 md:gap-5">
+    // `--home-gap` : l'espace entre les sections, repris par celles qui se déplient.
+    <Effect {...PAGE_ENTRANCE} className="flex flex-col gap-(--home-gap) [--home-gap:1.5rem] md:[--home-gap:1.25rem]">
       {/* Échec d'une action, les listes restent affichées. */}
-      {social.error && (
+      <Reveal show={Boolean(social.error)} gap="var(--home-gap)" gapSide="after">
         <div
           role="alert"
           className="flex items-center justify-between gap-3 rounded-2xl bg-destructive/10 py-2 pr-2 pl-4 text-sm text-destructive"
@@ -72,7 +98,7 @@ export function HomeContent({
             OK
           </Button>
         </div>
-      )}
+      </Reveal>
       <FriendsSection
         currentUserId={user.id}
         overview={social.overview}

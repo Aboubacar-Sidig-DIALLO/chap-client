@@ -1,8 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { CheckmarkCircle02Icon } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
@@ -11,6 +9,7 @@ import { type AuthError, getAuthErrorMessage } from "@/features/auth/lib/errors"
 import { MAX_NAME_LENGTH, normalizeName } from "@/features/auth/lib/validation"
 import { authClient } from "@/lib/auth-client"
 import { FIELD_CLASS, FORM_CARD_CLASS } from "./profile-styles"
+import { SavedStatus } from "./saved-status"
 
 const ERROR_ID = "name-error"
 
@@ -60,15 +59,10 @@ export function NameForm({ currentName }: { currentName: string }) {
         aria-describedby={error ? ERROR_ID : undefined}
         className={FIELD_CLASS}
       />
-      <FormError id={ERROR_ID}>{error && getAuthErrorMessage(error)}</FormError>
+      <FormError id={ERROR_ID} gap={12}>{error && getAuthErrorMessage(error)}</FormError>
 
       <div className="flex items-center justify-end gap-3">
-        {status === "saved" && (
-          <p role="status" className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
-            <HugeiconsIcon icon={CheckmarkCircle02Icon} size={16} strokeWidth={2} aria-hidden />
-            Enregistré
-          </p>
-        )}
+        <SavedStatus show={status === "saved"}>Enregistré</SavedStatus>
         <Button type="submit" disabled={!canSave} className="h-10 rounded-full px-5">
           {status === "saving" ? (
             <>

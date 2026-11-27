@@ -2,6 +2,7 @@
 
 import { UserSearch01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { AnimatedItem, AnimatedItems } from "@/components/motion/animated-list"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { cn } from "@/lib/utils"
 import { formatDate } from "../lib/format"
@@ -62,19 +63,24 @@ export function UsersList({ users, currentUserId, isRefreshing, onAction }: User
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y">
-            {users.map((user) => (
-              <UserTableRow key={user.id} {...rowProps(user)} />
-            ))}
+          {/* Compte supprimé, résultats qui changent : les lignes entrent et sortent en fondu. */}
+          <tbody>
+            <AnimatedItems>
+              {users.map((user) => (
+                <UserTableRow key={user.id} {...rowProps(user)} />
+              ))}
+            </AnimatedItems>
           </tbody>
         </table>
       </div>
 
       {/* Mobile : cartes. */}
-      <ul className="divide-y overflow-hidden rounded-3xl border bg-card md:hidden">
-        {users.map((user) => (
-          <UserCard key={user.id} {...rowProps(user)} />
-        ))}
+      <ul className="flex flex-col overflow-hidden rounded-3xl border bg-card md:hidden">
+        <AnimatedItems>
+          {users.map((user) => (
+            <UserCard key={user.id} {...rowProps(user)} />
+          ))}
+        </AnimatedItems>
       </ul>
     </div>
   )
@@ -106,7 +112,8 @@ function UserIdentity({ user, isSelf }: Pick<UserRowProps, "user" | "isSelf">) {
 
 function UserTableRow({ user, isSelf, onAction }: UserRowProps) {
   return (
-    <tr className="transition-colors hover:bg-muted/30">
+    // Filet par ligne (pas de `divide-y`) : une ligne qui part sort aussitôt du flux.
+    <AnimatedItem as="tr" className="border-t transition-colors first:border-t-0 hover:bg-muted/30">
       <td className="max-w-72 px-4 py-2.5">
         <UserIdentity user={user} isSelf={isSelf} />
       </td>
@@ -120,13 +127,13 @@ function UserTableRow({ user, isSelf, onAction }: UserRowProps) {
       <td className="px-2 py-2.5 text-right">
         <UserActionsMenu user={user} isSelf={isSelf} onAction={onAction} />
       </td>
-    </tr>
+    </AnimatedItem>
   )
 }
 
 function UserCard({ user, isSelf, onAction }: UserRowProps) {
   return (
-    <li className="flex items-start gap-2 py-3 pr-2 pl-4">
+    <AnimatedItem className="flex items-start gap-2 border-t py-3 pr-2 pl-4 first:border-t-0">
       <div className="min-w-0 flex-1 space-y-2">
         <UserIdentity user={user} isSelf={isSelf} />
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-11">
@@ -135,7 +142,7 @@ function UserCard({ user, isSelf, onAction }: UserRowProps) {
         </div>
       </div>
       <UserActionsMenu user={user} isSelf={isSelf} onAction={onAction} />
-    </li>
+    </AnimatedItem>
   )
 }
 

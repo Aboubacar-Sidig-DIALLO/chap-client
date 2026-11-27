@@ -74,7 +74,7 @@ export function EmailForm({ currentEmail }: { currentEmail: string }) {
           aria-describedby={error ? `${ERROR_ID} ${HINT_ID}` : HINT_ID}
           className={FIELD_CLASS}
         />
-        <FormError id={ERROR_ID}>{error && getAuthErrorMessage(error)}</FormError>
+        <FormError id={ERROR_ID} gap={12}>{error && getAuthErrorMessage(error)}</FormError>
         <p id={HINT_ID} className="px-1 text-sm text-muted-foreground">
           Après le changement, vous serez déconnecté de tous vos appareils et vous vous reconnecterez avec la
           nouvelle adresse.

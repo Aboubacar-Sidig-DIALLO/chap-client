@@ -3,6 +3,7 @@
 import { ArrowLeft01Icon, Crown02Icon, UserShield01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Dialog } from "@animate-ui/react/primitives/base-ui/dialog"
+import { Reveal } from "@/components/motion/reveal"
 import { Button } from "@/components/ui/button"
 import type { ChatUser } from "@/features/chat/types"
 import { cn } from "@/lib/utils"
@@ -65,12 +66,14 @@ export function RoleBadge({ role, className }: { role: GroupRole; className?: st
   )
 }
 
-/** Message d'erreur d'une action de la fiche. */
+/** Message d'erreur d'une action de la fiche : il se déplie sur place, et se replie de même. */
 export function ActionError({ message }: { message: string | null }) {
-  if (!message) return null
   return (
-    <p role="alert" className="rounded-2xl bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-      {message}
-    </p>
+    // Les vues espacent leurs blocs de 20 px (`gap-5`).
+    <Reveal show={message !== null} gap={20}>
+      <p role="alert" className="rounded-2xl bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+        {message}
+      </p>
+    </Reveal>
   )
 }

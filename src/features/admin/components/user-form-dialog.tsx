@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { Reveal } from "@/components/motion/reveal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
@@ -148,7 +149,8 @@ function UserForm({ user, onSubmit, onDone }: UserFormProps) {
         </fieldset>
       )}
 
-      {needsPassword && (
+      {/* Rôle administrateur choisi : son mot de passe se dévoile. */}
+      <Reveal show={needsPassword} gap={16}>
         <PasswordField
           label="Mot de passe"
           canGenerate
@@ -157,7 +159,7 @@ function UserForm({ user, onSubmit, onDone }: UserFormProps) {
           autoComplete="new-password"
           hint={`Au moins ${MIN_PASSWORD_LENGTH} caractères. Transmettez-le de façon sûre ; il pourra le changer dans son profil.`}
         />
-      )}
+      </Reveal>
 
       <FormError message={error} />
 

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ArrowRight01Icon, LockIcon, UserAdd01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
+import { AnimatedItem, AnimatedItems } from "@/components/motion/animated-list"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
@@ -52,12 +53,13 @@ export function MemberList({ group, currentUserId, isOwner, canAdd, onAddClick, 
             </button>
           </li>
         )}
+        <AnimatedItems>
         {group.members.map((member) => {
           const isSelf = member.id === currentUserId
           const content = <MemberSummary member={member} isSelf={isSelf} showRestrictions={isOwner} />
           // Le propriétaire règle chacun des autres membres ; lui-même a toujours tous les droits.
           return (
-            <li key={member.id}>
+            <AnimatedItem key={member.id}>
               {isOwner && !isSelf ? (
                 <button
                   type="button"
@@ -77,9 +79,10 @@ export function MemberList({ group, currentUserId, isOwner, canAdd, onAddClick, 
               ) : (
                 <div className={ROW_CLASS}>{content}</div>
               )}
-            </li>
+            </AnimatedItem>
           )
         })}
+        </AnimatedItems>
       </ul>
     </section>
   )

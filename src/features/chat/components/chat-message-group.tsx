@@ -12,13 +12,15 @@ import {
 import { cn } from "@/lib/utils"
 import { AnimateIcon } from "@animate-ui/react/icons"
 import {
+  blur,
   spring,
   transition,
   useTempoTransition,
 } from "@animate-ui/react/utils/motion"
+import { Swap } from "@/components/motion/swap"
 import { Delete02Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { motion } from "motion/react"
+import { AnimatePresence, motion, useIsPresent } from "motion/react"
 import { useState } from "react"
 import type { ReactionEmoji } from "../lib/config"
 import { getJumboEmojis } from "../lib/emoji"
@@ -76,6 +78,8 @@ export function ChatMessageGroup({
       <MessageContent className="gap-1">
         {!isOwn && showAuthor && <MessageHeader>{run.author.name}</MessageHeader>}
 
+        {/* Un message retiré par son auteur se replie ; les suivants remontent en douceur. */}
+        <AnimatePresence initial={false}>
         {run.messages.map((message, index) => (
           <MessageItem
             key={message.id}
@@ -88,6 +92,7 @@ export function ChatMessageGroup({
             onReact={onReact}
           />
         ))}
+        </AnimatePresence>
 
         <MessageFooter className="gap-1.5">
           <time dateTime={lastMessage.createdAt} suppressHydrationWarning>
@@ -167,6 +172,11 @@ function DeletedMessage({ deletedBy, isOwn, currentUserId }: DeletedMessageProps
   )
 }
 
+/** Une place dans le message (le message, ou sa mention) : alignée du côté de son auteur. */
+const SLOT_CLASS = "flex w-full flex-col items-start gap-1 group-data-[align=end]/message:items-end"
+/** La bulle (ou son éditeur) : ajustée au contenu, pour que le bouton de réaction reste collé à elle. */
+const BUBBLE_SLOT_CLASS = "flex max-w-full flex-col items-start group-data-[align=end]/message:items-end"
+
 function MessageItem({
   message,
   isOwn,
@@ -178,6 +188,8 @@ function MessageItem({
 }: MessageItemProps) {
   const rise = useTempoTransition(spring.entrance)
   const fade = useTempoTransition(transition.fade)
+  const collapse = useTempoTransition(transition.collapse)
+  const isPresent = useIsPresent()
   const actions = useMessageActions(message)
   const [isEditing, setIsEditing] = useState(false)
   const jumboEmojis = message.content ? getJumboEmojis(message.content) : null
@@ -192,6 +204,8 @@ function MessageItem({
         <MessageAttachments message={message} isOwn={isOwn} />
       )}
 
+      {/* La bulle et son éditeur se fondent l'un dans l'autre, sur place. */}
+      <Swap swapKey={showEditor ? "editor" : "bubble"} className={BUBBLE_SLOT_CLASS}>
       {showEditor ? (
         <MessageEditor
           initialContent={message.content}
@@ -209,6 +223,7 @@ function MessageItem({
           </MessageBubble>
         )
       )}
+      </Swap>
     </>
   )
 
@@ -216,12 +231,18 @@ function MessageItem({
     <motion.div
       initial={animateIn ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0, transition: { ...rise, opacity: fade } }}
+      // Retiré par son auteur : il se replie sur place (rogné et inerte le temps de sa sortie).
+      exit={{ opacity: 0, height: 0, filter: blur.disclosure, transition: collapse }}
+      inert={!isPresent}
+      style={{ overflow: isPresent ? undefined : "clip" }}
       // Seul le dernier de la suite affiche son heure : au survol, chacun donne la sienne.
       title={formatTime(message.createdAt)}
       // `@container` : la colonne de référence des largeurs max. des bulles et cartes (`cqw`),
       // quelles que soient les enveloppes intermédiaires (réactions).
       className="@container flex w-full flex-col items-start gap-1 group-data-[align=end]/message:items-end"
     >
+      {/* Supprimé par un modérateur : le message laisse place à sa mention, en fondu. */}
+      <Swap swapKey={message.deletedBy ? "deleted" : "message"} className={SLOT_CLASS}>
       {/* On ne réagit qu'à un message reçu par le serveur, et jamais à un message supprimé. */}
       {message.status === "sent" && !message.deletedBy ? (
         <ReactableMessage
@@ -237,6 +258,7 @@ function MessageItem({
       ) : (
         body
       )}
+      </Swap>
 
       {message.status === "failed" && (
         <AnimateIcon animateOnHover="rotate" animateOnTap="rotate" asChild>

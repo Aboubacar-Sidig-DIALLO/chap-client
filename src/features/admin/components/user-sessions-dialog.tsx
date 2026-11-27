@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { ComputerPhoneSyncIcon, Delete02Icon, UserSwitchIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { AnimatedItem, AnimatedItems } from "@/components/motion/animated-list"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { AdminActionError, adminApi } from "../lib/api"
@@ -94,9 +95,10 @@ function SessionList({ user, onRevoked }: Pick<UserSessionsDialogProps, "user" |
           Aucune session ouverte : {user.name} n&apos;est connecté sur aucun appareil.
         </p>
       ) : (
-        <ul className="divide-y overflow-hidden rounded-2xl border">
+        <ul className="flex flex-col overflow-hidden rounded-2xl border">
+          <AnimatedItems>
           {sessions.map((session) => (
-            <li key={session.id} className="flex items-center gap-3 px-3 py-2.5">
+            <AnimatedItem key={session.id} className="flex items-center gap-3 border-t px-3 py-2.5 first:border-t-0">
               <span
                 aria-hidden
                 className="grid size-9 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground"
@@ -133,8 +135,9 @@ function SessionList({ user, onRevoked }: Pick<UserSessionsDialogProps, "user" |
                   <HugeiconsIcon icon={Delete02Icon} size={18} strokeWidth={2} />
                 )}
               </Button>
-            </li>
+            </AnimatedItem>
           ))}
+          </AnimatedItems>
         </ul>
       )}
 

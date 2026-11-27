@@ -1,4 +1,7 @@
+"use client"
+
 import Link from "next/link"
+import { AnimatedItem } from "@/components/motion/animated-list"
 import { cn } from "@/lib/utils"
 import { UnreadBadge } from "./unread-badge"
 
@@ -42,9 +45,10 @@ export function ListRow({ leading, title, description, href, isActive = false, u
   )
 
   return (
-    <li
+    // Filet par ligne (pas de `divide-y`) : une ligne qui part sort aussitôt du flux.
+    <AnimatedItem
       data-active={isActive || undefined}
-      className="group/row flex min-h-16 items-center gap-1 pr-2 md:min-h-14 md:rounded-xl md:transition-[background-color,box-shadow] md:hover:bg-foreground/4 md:data-active:bg-card md:data-active:shadow-xs md:data-active:ring-1 md:data-active:ring-border md:dark:data-active:bg-muted"
+      className="group/row flex border-t first:border-t-0 md:border-t-0 min-h-16 items-center gap-1 pr-2 md:min-h-14 md:rounded-xl md:transition-[background-color,box-shadow] md:hover:bg-foreground/4 md:data-active:bg-card md:data-active:shadow-xs md:data-active:ring-1 md:data-active:ring-border md:dark:data-active:bg-muted"
     >
       {href ? (
         <Link
@@ -58,6 +62,6 @@ export function ListRow({ leading, title, description, href, isActive = false, u
         <div className="flex min-w-0 flex-1 items-center gap-3 py-2 pl-4 md:pl-2">{identity}</div>
       )}
       {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
-    </li>
+    </AnimatedItem>
   )
 }
