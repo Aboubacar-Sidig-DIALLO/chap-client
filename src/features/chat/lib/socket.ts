@@ -23,7 +23,8 @@ export type SendMessageAck =
   | { ok: true; message: ServerMessage }
   | { ok: false; error: string }
 
-export type DeleteMessageAck = { ok: true } | { ok: false; error: string }
+/** Réponse à une action sur un message (modification, suppression…). */
+export type MessageActionAck = { ok: true } | { ok: false; error: string }
 
 /** Contrat Socket.io — à garder synchronisé avec le serveur (`sse/src/chat/chat.types.ts`). */
 interface ServerToClientEvents {
@@ -37,6 +38,10 @@ interface ServerToClientEvents {
   "session:ended": () => void
   "chat:history": (messages: ServerMessage[]) => void
   "message:new": (message: ServerMessage) => void
+  /** Son auteur a modifié un message (texte corrigé, pièce jointe retirée). */
+  "message:updated": (message: ServerMessage) => void
+  /** Son auteur a retiré un message que personne n'avait vu. */
+  "message:unsent": (event: { messageId: string }) => void
   /** Un modérateur du groupe a supprimé un message. */
   "message:deleted": (event: { messageId: string; deletedBy: ChatUser }) => void
   /** Groupe : qui a la conversation ouverte en ce moment. */
@@ -71,7 +76,19 @@ interface ClientToServerEvents {
     ack: (response: SendMessageAck) => void
   ) => void
   /** Supprime un message pour tous (propriétaire et administrateurs d'un groupe). */
-  "message:delete": (messageId: string, ack: (response: DeleteMessageAck) => void) => void
+  "message:delete": (messageId: string, ack: (response: MessageActionAck) => void) => void
+  /** L'auteur corrige son message, tant que personne d'autre ne l'a vu. */
+  "message:edit": (
+    payload: { messageId: string; content: string },
+    ack: (response: MessageActionAck) => void
+  ) => void
+  /** L'auteur retire son message, tant que personne d'autre ne l'a vu. */
+  "message:unsend": (messageId: string, ack: (response: MessageActionAck) => void) => void
+  /** L'auteur retire une pièce jointe de son message, aux mêmes conditions. */
+  "message:remove-attachment": (
+    payload: { messageId: string; attachmentId: string },
+    ack: (response: MessageActionAck) => void
+  ) => void
   activity: (activity: UserActivity | null) => void
   /** Le message vocal `messageId` a été écouté. */
   "voice:listened": (messageId: string) => void

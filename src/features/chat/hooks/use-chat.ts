@@ -14,7 +14,7 @@ import {
 } from "../lib/receipts"
 import type { Presence } from "@/features/social/types"
 import { FULL_RIGHTS } from "@/features/social/lib/group-rights"
-import { createChatSocket, listen, type ChatSocket } from "../lib/socket"
+import { createChatSocket, listen, type ChatSocket, type MessageActionAck } from "../lib/socket"
 import type {
   ActiveUser,
   Attachment,
@@ -33,8 +33,17 @@ import type {
 
 /** Délai au-delà duquel un message sans accusé de réception est considéré en échec. */
 const ACK_TIMEOUT_MS = 5000
-/** Suppression restée sans réponse. */
-const DELETE_FAILED = "Le message n'a pas pu être supprimé. Réessayez."
+/** Action sur un message restée sans réponse du serveur. */
+const ACTION_FAILED = "La connexion a échoué. Réessayez."
+
+/**
+ * Accusé d'une action sur un message, transformé en erreur à afficher
+ * (`null` : réussie). Le changement lui-même arrive par diffusion, à tous.
+ */
+function settle(resolve: (error: string | null) => void) {
+  return (timeout: Error | null, response: MessageActionAck) =>
+    resolve(timeout ? ACTION_FAILED : response.ok ? null : response.error)
+}
 
 /** Délai d'inactivité après lequel on signale la fin de frappe. */
 const TYPING_IDLE_MS = 2500
@@ -163,6 +172,12 @@ export function useChat(
         setActivity(message.author, null)
         acknowledge(message.seq)
       },
+      "message:updated": (updated) =>
+        setMessages((previous) =>
+          previous.map((message) => (message.id === updated.id ? toChatMessage(updated) : message))
+        ),
+      "message:unsent": ({ messageId }) =>
+        setMessages((previous) => previous.filter((message) => message.id !== messageId)),
       "message:deleted": ({ messageId, deletedBy }) =>
         setMessages((previous) =>
           previous.map((message) =>
@@ -353,12 +368,32 @@ export function useChat(
    * l'erreur à afficher, ou `null`.
    */
   function deleteMessage(messageId: string): Promise<string | null> {
-    return new Promise((resolve) => {
-      socket.timeout(ACK_TIMEOUT_MS).emit("message:delete", messageId, (error, response) => {
-        if (error) resolve(DELETE_FAILED)
-        else resolve(response.ok ? null : response.error)
-      })
-    })
+    return new Promise((resolve) =>
+      socket.timeout(ACK_TIMEOUT_MS).emit("message:delete", messageId, settle(resolve))
+    )
+  }
+
+  /** Corrige son message, tant que personne d'autre ne l'a vu. */
+  function editMessage(messageId: string, content: string): Promise<string | null> {
+    return new Promise((resolve) =>
+      socket.timeout(ACK_TIMEOUT_MS).emit("message:edit", { messageId, content }, settle(resolve))
+    )
+  }
+
+  /** Retire son message, tant que personne d'autre ne l'a vu : il disparaît sans trace. */
+  function unsendMessage(messageId: string): Promise<string | null> {
+    return new Promise((resolve) =>
+      socket.timeout(ACK_TIMEOUT_MS).emit("message:unsend", messageId, settle(resolve))
+    )
+  }
+
+  /** Retire une photo, un fichier ou un vocal de son message, aux mêmes conditions. */
+  function removeAttachment(messageId: string, attachmentId: string): Promise<string | null> {
+    return new Promise((resolve) =>
+      socket
+        .timeout(ACK_TIMEOUT_MS)
+        .emit("message:remove-attachment", { messageId, attachmentId }, settle(resolve))
+    )
   }
 
   /** Les pièces jointes doivent déjà avoir été envoyées (`uploadAttachment`). */
@@ -435,5 +470,8 @@ export function useChat(
     markListened,
     toggleReaction,
     deleteMessage,
+    editMessage,
+    unsendMessage,
+    removeAttachment,
   }
 }

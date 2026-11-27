@@ -73,6 +73,8 @@ export interface ServerMessage {
   call?: CallSummary
   /** Supprimé par un modérateur du groupe : contenu effacé, seule reste cette mention. */
   deletedBy?: ChatUser
+  /** Date ISO 8601 de la dernière modification par son auteur. */
+  editedAt?: string
 }
 
 export interface Reaction {

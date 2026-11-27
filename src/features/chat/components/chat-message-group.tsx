@@ -1,14 +1,5 @@
 "use client"
 
-import { Delete02Icon } from "@hugeicons/core-free-icons"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { motion } from "motion/react"
-import { AnimateIcon } from "@animate-ui/react/icons"
-import {
-  spring,
-  transition,
-  useTempoTransition,
-} from "@animate-ui/react/utils/motion"
 import { Refresh } from "@/components/animate-ui/icons/hugeicons/refresh"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,6 +10,16 @@ import {
   MessageHeader,
 } from "@/components/ui/message"
 import { cn } from "@/lib/utils"
+import { AnimateIcon } from "@animate-ui/react/icons"
+import {
+  spring,
+  transition,
+  useTempoTransition,
+} from "@animate-ui/react/utils/motion"
+import { Delete02Icon } from "@hugeicons/core-free-icons"
+import { HugeiconsIcon } from "@hugeicons/react"
+import { motion } from "motion/react"
+import { useState } from "react"
 import type { ReactionEmoji } from "../lib/config"
 import { getJumboEmojis } from "../lib/emoji"
 import { formatTime } from "../lib/format"
@@ -26,8 +27,10 @@ import type { MessageRun } from "../lib/group-messages"
 import { getMessageReceipt } from "../lib/receipts"
 import type { ChatMessage, ChatUser, ReadReceipt } from "../types"
 import { Emoji } from "./emoji"
+import { useMessageActions } from "./message-actions"
 import { MessageAttachments } from "./message-attachments"
 import { MessageBubble } from "./message-bubble"
+import { MessageEditor } from "./message-editor"
 import { ReactableMessage } from "./message-reactions"
 import { MessageReceiptStatus } from "./message-receipt-status"
 import { UserAvatar } from "./user-avatar"
@@ -45,8 +48,6 @@ interface ChatMessageGroupProps {
   currentUserId: string
   onRetry: (messageId: string) => void
   onReact: (message: ChatMessage, emoji: ReactionEmoji) => void
-  /** Modérateur du groupe : supprime un message pour tous (renvoie l'erreur éventuelle). */
-  onDelete?: (message: ChatMessage) => Promise<string | null>
 }
 
 /** Messages consécutifs d'un même auteur : un seul avatar (en groupe) et un seul horodatage. */
@@ -60,7 +61,6 @@ export function ChatMessageGroup({
   currentUserId,
   onRetry,
   onReact,
-  onDelete,
 }: ChatMessageGroupProps) {
   const lastMessage = run.messages[run.messages.length - 1]
 
@@ -86,7 +86,6 @@ export function ChatMessageGroup({
             animateIn={historyIds !== null && !historyIds.has(message.id)}
             onRetry={onRetry}
             onReact={onReact}
-            onDelete={onDelete}
           />
         ))}
 
@@ -117,7 +116,6 @@ interface MessageItemProps {
   animateIn: boolean
   onRetry: (messageId: string) => void
   onReact: (message: ChatMessage, emoji: ReactionEmoji) => void
-  onDelete?: (message: ChatMessage) => Promise<string | null>
 }
 
 interface JumboEmojisProps {
@@ -140,6 +138,15 @@ function JumboEmojis({ emojis, label, isPending }: JumboEmojisProps) {
     </p>
   )
 }
+
+/** « modifié », discret, à la fin du texte ; l'heure de la modification au survol. */
+// function EditedMark({ editedAt }: { editedAt: string }) {
+//   return (
+//     <span title={`Modifié à ${formatTime(editedAt)}`} className="ml-1.5 text-[11px] italic opacity-70">
+//       modifié
+//     </span>
+//   )
+// }
 
 interface DeletedMessageProps {
   deletedBy: ChatUser
@@ -168,11 +175,14 @@ function MessageItem({
   animateIn,
   onRetry,
   onReact,
-  onDelete,
 }: MessageItemProps) {
   const rise = useTempoTransition(spring.entrance)
   const fade = useTempoTransition(transition.fade)
+  const actions = useMessageActions(message)
+  const [isEditing, setIsEditing] = useState(false)
   const jumboEmojis = message.content ? getJumboEmojis(message.content) : null
+  // Vu entre-temps par un autre : l'édition se referme d'elle-même.
+  const showEditor = isEditing && actions?.canEdit === true
 
   const body = message.deletedBy ? (
     <DeletedMessage deletedBy={message.deletedBy} isOwn={isOwn} currentUserId={currentUserId} />
@@ -182,12 +192,20 @@ function MessageItem({
         <MessageAttachments message={message} isOwn={isOwn} />
       )}
 
-      {jumboEmojis ? (
+      {showEditor ? (
+        <MessageEditor
+          initialContent={message.content}
+          canBeEmpty={message.attachments.length > 0}
+          onSave={actions.edit}
+          onClose={() => setIsEditing(false)}
+        />
+      ) : jumboEmojis ? (
         <JumboEmojis emojis={jumboEmojis} label={message.content} isPending={message.status !== "sent"} />
       ) : (
         message.content && (
           <MessageBubble isOwn={isOwn} status={message.status} isFollowUp={isFollowUp}>
             {message.content}
+            {/* {message.editedAt && <EditedMark editedAt={message.editedAt} />} */}
           </MessageBubble>
         )
       )}
@@ -211,7 +229,8 @@ function MessageItem({
           isOwn={isOwn}
           currentUserId={currentUserId}
           onReact={onReact}
-          onDelete={onDelete}
+          actions={actions}
+          onEditRequest={() => setIsEditing(true)}
         >
           {body}
         </ReactableMessage>

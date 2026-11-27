@@ -22,6 +22,7 @@ import { ConnectionBanner } from "./connection-banner"
 import { ConversationUnavailable } from "./conversation-unavailable"
 import { FileDropZone } from "./file-drop-zone"
 import { FloatingPlayer } from "./floating-player"
+import { MessageActionsProvider } from "./message-actions"
 import { MessageList } from "./message-list"
 import { VoicePlaybackProvider } from "./voice-playback"
 
@@ -74,6 +75,9 @@ export function ChatRoom({
     markListened,
     toggleReaction,
     deleteMessage,
+    editMessage,
+    unsendMessage,
+    removeAttachment,
   } = useChat(currentUser, conversation, { onUnauthorized: onSessionExpired })
   const attachments = useAttachmentDrafts()
   const router = useRouter()
@@ -140,20 +144,31 @@ export function ChatRoom({
           {/* Zone des messages : mini-lecteur et mini-direct flottent à l'intérieur,
               sans couvrir l'en-tête ni l'orbe. */}
           <div className="relative flex min-h-0 flex-1 flex-col">
-            <MessageList
-              messages={messages}
-              isHistoryLoaded={isHistoryLoaded}
-              currentUserId={currentUser.id}
-              isDirect={isDirect}
-              activeUsers={activeUsers}
-              receipts={receipts}
-              unreadCount={unreadCount}
-              latestIncomingSeq={latestIncomingSeq}
-              onRead={markAsRead}
-              onRetry={retryMessage}
-              onReact={toggleReaction}
-              onDelete={rights.moderate ? (message) => deleteMessage(message.id) : undefined}
-            />
+            <MessageActionsProvider
+              value={{
+                currentUserId: currentUser.id,
+                receipts,
+                canModerate: rights.moderate,
+                edit: editMessage,
+                unsend: unsendMessage,
+                removeAttachment,
+                moderate: deleteMessage,
+              }}
+            >
+              <MessageList
+                messages={messages}
+                isHistoryLoaded={isHistoryLoaded}
+                currentUserId={currentUser.id}
+                isDirect={isDirect}
+                activeUsers={activeUsers}
+                receipts={receipts}
+                unreadCount={unreadCount}
+                latestIncomingSeq={latestIncomingSeq}
+                onRead={markAsRead}
+                onRetry={retryMessage}
+                onReact={toggleReaction}
+              />
+            </MessageActionsProvider>
             <FloatingPlayer />
             <CallMini />
           </div>

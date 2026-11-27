@@ -53,6 +53,20 @@ export function getMessageReceipt(
   }
 }
 
+/**
+ * Vu par quelqu'un d'autre que son auteur : lu à l'écran, ou vocal écouté
+ * (même en partie). Il ne peut alors plus être modifié ni supprimé par lui
+ * (même règle que le serveur, qui tranche).
+ */
+export function isSeenByOthers(message: ChatMessage, receipts: ReadReceipt[]) {
+  if (message.listenedBy.length > 0 || message.listenProgress.length > 0) return true
+  const { seq, author } = message
+  return (
+    seq !== undefined &&
+    receipts.some((receipt) => receipt.user.id !== author.id && receipt.readSeq >= seq)
+  )
+}
+
 /** Libellé court : « Envoyé », « Distribué », « Lu par Alice et Bob »… */
 export function getReceiptLabel({ status, readBy }: MessageReceipt) {
   switch (status) {
