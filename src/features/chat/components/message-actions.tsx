@@ -2,6 +2,7 @@
 
 import { createContext, use } from "react"
 import { isSeenByOthers } from "../lib/receipts"
+import type { ViewOnceOpenAck } from "../lib/socket"
 import type { Attachment, ChatMessage, ReadReceipt } from "../types"
 
 /** Chaque action renvoie l'erreur à afficher, ou `null` si elle a réussi. */
@@ -17,6 +18,8 @@ interface MessageActionsValue {
   unsend: (messageId: string) => MessageRequest
   removeAttachment: (messageId: string, attachmentId: string) => MessageRequest
   moderate: (messageId: string) => MessageRequest
+  /** Ouvre un message à vue unique reçu (une seule fois). */
+  openViewOnce: (messageId: string) => Promise<ViewOnceOpenAck>
 }
 
 const MessageActionsContext = createContext<MessageActionsValue | null>(null)
@@ -30,6 +33,11 @@ export function MessageActionsProvider({
   children: React.ReactNode
 }) {
   return <MessageActionsContext value={value}>{children}</MessageActionsContext>
+}
+
+/** Ouvre un message à vue unique reçu ; `null` hors d'une conversation. */
+export function useOpenViewOnce() {
+  return use(MessageActionsContext)?.openViewOnce ?? null
 }
 
 /**

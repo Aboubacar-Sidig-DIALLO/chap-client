@@ -157,9 +157,10 @@ export function VoicePlaybackProvider({
     }
   }
 
-  // Les vocaux de la conversation, dans l'ordre d'affichage.
+  // Les vocaux de la conversation, dans l'ordre d'affichage. Ceux à écoute
+  // unique n'en font pas partie : ils s'ouvrent à part, une fois.
   const queue = messages.flatMap((message) =>
-    message.attachments
+    (message.viewOnce ? [] : message.attachments)
       .filter((attachment) => isPlayableAudio(attachment.mimeType))
       .map((attachment) => ({ attachmentId: attachment.id, message }))
   )

@@ -15,12 +15,18 @@ import type {
   ReadReceipt,
   ServerMessage,
   UserActivity,
+  ViewOnceFile,
 } from "../types"
 import type { PresenceChange } from "@/features/social/types"
 import { API_URL, type ReactionEmoji } from "./config"
 
 export type SendMessageAck =
   | { ok: true; message: ServerMessage }
+  | { ok: false; error: string }
+
+/** Ouverture d'un message à vue unique : ses fichiers, pour cette fois seulement. */
+export type ViewOnceOpenAck =
+  | { ok: true; files: ViewOnceFile[] }
   | { ok: false; error: string }
 
 /** Réponse à une action sur un message (modification, suppression…). */
@@ -71,6 +77,8 @@ interface ServerToClientEvents {
   "voice:progress": (event: { messageId: string } & ListenProgress) => void
   /** Les réactions d'un message ont changé. */
   "message:reactions": (event: { messageId: string; reactions: Reaction[] }) => void
+  /** Un destinataire a ouvert un message à vue unique. */
+  "view-once:opened": (event: { messageId: string; user: ChatUser }) => void
   /** Participants de l'appel, à la connexion puis à chaque changement. */
   "call:participants": (participants: CallParticipant[]) => void
   /** Appel entre amis terminé par l'autre (raccroché, refusé, sans réponse). */
@@ -89,9 +97,11 @@ interface ServerToClientEvents {
 
 interface ClientToServerEvents {
   "message:send": (
-    payload: { id: string; content: string; attachmentIds: string[] },
+    payload: { id: string; content: string; attachmentIds: string[]; viewOnce?: boolean },
     ack: (response: SendMessageAck) => void
   ) => void
+  /** Ouvre un message à vue unique (une seule fois). */
+  "view-once:open": (messageId: string, ack: (response: ViewOnceOpenAck) => void) => void
   /** Supprime un message pour tous (propriétaire et administrateurs d'un groupe). */
   "message:delete": (messageId: string, ack: (response: MessageActionAck) => void) => void
   /** L'auteur corrige son message, tant que personne d'autre ne l'a vu. */

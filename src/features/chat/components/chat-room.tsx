@@ -81,6 +81,7 @@ export function ChatRoom({
     editMessage,
     unsendMessage,
     removeAttachment,
+    openViewOnce,
   } = useChat(currentUser, conversation, { onUnauthorized: onSessionExpired })
   const attachments = useAttachmentDrafts()
   const router = useRouter()
@@ -164,6 +165,7 @@ export function ChatRoom({
                   unsend: unsendMessage,
                   removeAttachment,
                   moderate: deleteMessage,
+                  openViewOnce,
                 }}
               >
                 <MessageList

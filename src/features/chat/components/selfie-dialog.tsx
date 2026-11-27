@@ -9,13 +9,13 @@ import { buttonVariants } from "@/components/ui/button"
 import { uploadAttachment } from "../lib/attachments"
 import { readImageMetadata } from "../lib/image-metadata"
 import type { FacingMode } from "../lib/camera"
-import type { Attachment } from "../types"
+import type { Attachment, SendOptions } from "../types"
 import { cameraControlClass } from "./camera-control-button"
 import { SelfieCapture } from "./selfie-capture"
 import { SelfieReview, type UploadState } from "./selfie-review"
 
 interface SelfieDialogProps {
-  onSend: (content: string, attachments: Attachment[]) => void
+  onSend: (content: string, attachments: Attachment[], options?: SendOptions) => void
   disabled?: boolean
   /** Classes du bouton déclencheur. */
   className?: string

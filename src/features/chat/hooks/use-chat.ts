@@ -14,7 +14,14 @@ import {
 } from "../lib/receipts"
 import type { Presence } from "@/features/social/types"
 import { FULL_RIGHTS } from "@/features/social/lib/group-rights"
-import { createChatSocket, listen, type ChatSocket, type MessageActionAck } from "../lib/socket"
+import {
+  createChatSocket,
+  listen,
+  type ChatSocket,
+  type MessageActionAck,
+  type ViewOnceOpenAck,
+} from "../lib/socket"
+import { toViewOnceItem } from "../lib/view-once"
 import type {
   ActiveUser,
   Attachment,
@@ -26,6 +33,7 @@ import type {
   ConversationUnavailableReason,
   LiveListener,
   ReadReceipt,
+  SendOptions,
   SendStatus,
   ServerMessage,
   UserActivity,
@@ -189,6 +197,7 @@ export function useChat(
                   reactions: [],
                   listenedBy: [],
                   listenProgress: [],
+                  viewOnce: undefined,
                   deletedBy,
                 }
               : message
@@ -217,6 +226,7 @@ export function useChat(
               : message
           )
         ),
+      "view-once:opened": ({ messageId, user }) => addOpener(messageId, user),
       "message:reactions": ({ messageId, reactions }) =>
         setMessages((previous) =>
           previous.map((message) =>
@@ -259,6 +269,18 @@ export function useChat(
     return () => clearInterval(interval)
   }, [])
 
+  /** Un destinataire a ouvert ce message à vue unique (une seule fois). */
+  function addOpener(messageId: string, user: ChatUser) {
+    setMessages((previous) =>
+      previous.map((message) => {
+        const { viewOnce } = message
+        if (message.id !== messageId || !viewOnce) return message
+        if (viewOnce.openedBy.some((item) => item.id === user.id)) return message
+        return { ...message, viewOnce: { ...viewOnce, openedBy: [...viewOnce.openedBy, user] } }
+      })
+    )
+  }
+
   function updateMessage(id: string, update: Partial<ChatMessage>) {
     setMessages((previous) =>
       previous.map((message) =>
@@ -281,6 +303,7 @@ export function useChat(
           id: message.id,
           content: message.content,
           attachmentIds: message.attachments.map((attachment) => attachment.id),
+          viewOnce: message.viewOnce !== undefined,
         },
         (error, response) => {
           if (error || !response.ok) {
@@ -397,11 +420,30 @@ export function useChat(
   }
 
   /**
+   * Ouvre un message à vue unique reçu : la réponse donne, pour cette fois
+   * seulement, de quoi télécharger ses fichiers. Il est aussitôt « ouvert ».
+   */
+  function openViewOnce(messageId: string): Promise<ViewOnceOpenAck> {
+    return new Promise((resolve) =>
+      socket.timeout(ACK_TIMEOUT_MS).emit("view-once:open", messageId, (error, response) => {
+        if (error) return resolve({ ok: false, error: ACTION_FAILED })
+        if (response.ok) addOpener(messageId, currentUser)
+        resolve(response)
+      })
+    )
+  }
+
+  /**
    * Les pièces jointes doivent déjà avoir été envoyées (`uploadAttachment`).
    * `id` : fixé à l'avance pour un vocal parlé en direct (talkie-walkie), qui
-   * le relie à ce direct chez ceux qui l'ont entendu.
+   * le relie à ce direct chez ceux qui l'ont entendu. `viewOnce` : chaque
+   * destinataire ne pourra ouvrir les pièces jointes qu'une fois.
    */
-  function sendMessage(content: string, attachments: Attachment[] = [], id = createId()) {
+  function sendMessage(
+    content: string,
+    attachments: Attachment[] = [],
+    { id = createId(), viewOnce = false }: SendOptions = {}
+  ) {
     const now = Date.now()
     const message: ChatMessage = {
       id,
@@ -414,6 +456,8 @@ export function useChat(
       listenedBy: [],
       listenProgress: [],
       reactions: [],
+      // Les pièces jointes restent ici le temps de l'envoi ; le serveur ne les diffusera pas.
+      ...(viewOnce && { viewOnce: { items: attachments.map(toViewOnceItem), openedBy: [] } }),
       status: "sending",
     }
 
@@ -477,5 +521,6 @@ export function useChat(
     editMessage,
     unsendMessage,
     removeAttachment,
+    openViewOnce,
   }
 }

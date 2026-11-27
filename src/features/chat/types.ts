@@ -75,6 +75,37 @@ export interface ServerMessage {
   deletedBy?: ChatUser
   /** Date ISO 8601 de la dernière modification par son auteur. */
   editedAt?: string
+  /**
+   * Vue unique : ses pièces jointes ne sont jamais diffusées (`attachments`
+   * est vide), seulement annoncées ; chaque destinataire les ouvre une fois.
+   */
+  viewOnce?: ViewOnce
+}
+
+/** Genre d'une pièce jointe à vue unique : tout ce qu'on en sait avant de l'ouvrir. */
+export type ViewOnceKind = "voice" | "image" | "video" | "file"
+
+export interface ViewOnceItem {
+  kind: ViewOnceKind
+  /** Durée d'un vocal. */
+  durationMs?: number
+}
+
+export interface ViewOnce {
+  items: ViewOnceItem[]
+  /** Destinataires qui l'ont ouvert (et ne peuvent plus le rouvrir). */
+  openedBy: ChatUser[]
+}
+
+/** Pièce jointe à vue unique remise à l'ouverture, téléchargeable une minute. */
+export interface ViewOnceFile {
+  kind: ViewOnceKind
+  name: string
+  mimeType: string
+  /** Chemin relatif à l'API : `/attachments/once/<ticket>`. */
+  url: string
+  /** Durée et forme d'onde d'un vocal. */
+  voice?: VoiceMetadata
 }
 
 export interface Reaction {
@@ -87,6 +118,14 @@ export interface ListenProgress {
   user: ChatUser
   /** Entier de 0 à 100. */
   percent: number
+}
+
+/** Options d'envoi d'un message. */
+export interface SendOptions {
+  /** Fixé à l'avance pour un vocal parlé en direct (talkie-walkie). */
+  id?: string
+  /** Pièces jointes à vue unique : chaque destinataire ne les ouvre qu'une fois. */
+  viewOnce?: boolean
 }
 
 /** Ce qu'un participant est en train de faire. */

@@ -54,12 +54,18 @@ export function getMessageReceipt(
 }
 
 /**
- * Vu par quelqu'un d'autre que son auteur : lu à l'écran, ou vocal écouté
- * (même en partie). Il ne peut alors plus être modifié ni supprimé par lui
+ * Vu par quelqu'un d'autre que son auteur : lu à l'écran, vocal écouté
+ * (même en partie) ou vue unique ouverte. Il ne peut alors plus être modifié ni supprimé par lui
  * (même règle que le serveur, qui tranche).
  */
 export function isSeenByOthers(message: ChatMessage, receipts: ReadReceipt[]) {
-  if (message.listenedBy.length > 0 || message.listenProgress.length > 0) return true
+  if (
+    message.listenedBy.length > 0 ||
+    message.listenProgress.length > 0 ||
+    (message.viewOnce?.openedBy.length ?? 0) > 0
+  ) {
+    return true
+  }
   const { seq, author } = message
   return (
     seq !== undefined &&

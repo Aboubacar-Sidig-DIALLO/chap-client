@@ -20,6 +20,14 @@ export const PLAYABLE_AUDIO_TYPES: ReadonlySet<string> = new Set([
   "audio/wav",
 ])
 
+/** Vidéos lues par un navigateur sans module (vue unique) — mêmes que le serveur (`sse/src/chat/view-once.ts`). */
+export const PLAYABLE_VIDEO_TYPES: ReadonlySet<string> = new Set([
+  "video/mp4",
+  "video/webm",
+  "video/ogg",
+  "video/quicktime",
+])
+
 /** Réactions proposées sur un message — à garder synchronisé avec le serveur (`sse/src/chat/chat.constants.ts`). */
 export const REACTION_EMOJIS = ["❤️", "😂", "🔥", "👏", "😮", "🙏"] as const
 export type ReactionEmoji = (typeof REACTION_EMOJIS)[number]

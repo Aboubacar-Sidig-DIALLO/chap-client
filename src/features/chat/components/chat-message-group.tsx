@@ -36,6 +36,7 @@ import { MessageEditor } from "./message-editor"
 import { ReactableMessage } from "./message-reactions"
 import { MessageReceiptStatus } from "./message-receipt-status"
 import { UserAvatar } from "./user-avatar"
+import { ViewOnceMessage } from "./view-once-message"
 
 interface ChatMessageGroupProps {
   run: MessageRun
@@ -196,8 +197,12 @@ function MessageItem({
   // Vu entre-temps par un autre : l'édition se referme d'elle-même.
   const showEditor = isEditing && actions?.canEdit === true
 
+  const { viewOnce } = message
   const body = message.deletedBy ? (
     <DeletedMessage deletedBy={message.deletedBy} isOwn={isOwn} currentUserId={currentUserId} />
+  ) : viewOnce ? (
+    // Vue unique : une carte à ouvrir une fois, jamais le contenu lui-même.
+    <ViewOnceMessage message={{ ...message, viewOnce }} isOwn={isOwn} currentUserId={currentUserId} />
   ) : (
     <>
       {message.attachments.length > 0 && (

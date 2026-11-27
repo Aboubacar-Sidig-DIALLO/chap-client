@@ -25,6 +25,11 @@ interface UseAudioPlayerOptions {
   knownDurationMs?: number
   /** Vitesse de lecture (partagée par toute la conversation). */
   rate: number
+  /**
+   * Lance la lecture dès que le fichier est prêt (durée connue), pas avant :
+   * un webm sans durée est d'abord parcouru jusqu'au bout pour la calculer.
+   */
+  autoPlay?: boolean
   /** Reçoit l'élément `<audio>`, pour mesurer le son (orbe vocal). */
   onPlay?: (element: HTMLAudioElement) => void
   onPause?: () => void
@@ -40,6 +45,7 @@ interface UseAudioPlayerOptions {
 export function useAudioPlayer({
   knownDurationMs,
   rate,
+  autoPlay = false,
   onPlay,
   onPause,
   onEnded,
@@ -125,6 +131,8 @@ export function useAudioPlayer({
       ensureKnownDuration(audio, () => {
         isPreparingRef.current = false
         setFileDurationMs(audio.duration * 1000)
+        // Refusée par le navigateur (pas de geste récent) : le bouton lecture reste là.
+        if (autoPlay) audio.play().catch(() => {})
       })
     },
     onPlay: () => {

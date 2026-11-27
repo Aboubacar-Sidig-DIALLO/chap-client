@@ -25,18 +25,18 @@ import type { AttachmentDrafts } from "../hooks/use-attachment-drafts"
 import { useElementHeight } from "@/hooks/use-element-height"
 import { useIsTouchDevice } from "../hooks/use-media-query"
 import { COMPOSER_LAYOUT_IDS } from "../lib/composer-layout"
-import type { Attachment } from "../types"
+import type { Attachment, SendOptions } from "../types"
 import { AttachmentDraftList } from "./attachment-draft-list"
 import { EmojiPickerButton } from "./emoji-picker-button"
 import { SelfieDialog } from "./selfie-dialog"
+import { ViewOnceIcon, ViewOnceToggle } from "./view-once-icon"
 import { VoiceDock } from "./voice-dock"
 
 /** Cibles tactiles de 40 px sur mobile, plus compactes à la souris. */
 const ICON_BUTTON_CLASS = "size-10 sm:size-9"
 
 interface ChatComposerProps {
-  /** `id` : fixé à l'avance pour un vocal parlé en direct (talkie-walkie). */
-  onSend: (content: string, attachments: Attachment[], id?: string) => void
+  onSend: (content: string, attachments: Attachment[], options?: SendOptions) => void
   onTyping?: () => void
   /** Prévient les autres participants qu'un vocal s'enregistre. */
   onRecordingChange?: (isRecording: boolean) => void
@@ -75,6 +75,8 @@ export function ChatComposer({
   const [sentCount, setSentCount] = useState(0)
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false)
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false)
+  /** Vue unique armée : le prochain vocal, photo, vidéo ou fichier ne s'ouvrira qu'une fois. */
+  const [isViewOnce, setIsViewOnce] = useState(false)
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -122,10 +124,25 @@ export function ChatComposer({
     if (!open) setIsKeyboardOpen(true)
   }
 
+  /**
+   * Tout envoi passe par ici (texte, fichiers, vocal, selfie). Vue unique
+   * armée : elle s'applique aux pièces jointes (un éventuel texte part à
+   * côté, normalement), puis se désarme.
+   */
+  function send(content: string, files: Attachment[], options: SendOptions = {}) {
+    if (!isViewOnce || files.length === 0) {
+      onSend(content, files, options)
+      return
+    }
+    if (content) onSend(content, [])
+    onSend("", files, { ...options, viewOnce: true })
+    setIsViewOnce(false)
+  }
+
   function submit() {
     if (!canSend) return
 
-    onSend(value.trim(), attachments.attachments)
+    send(value.trim(), attachments.attachments)
     setSentCount((count) => count + 1)
     setValue("")
     attachments.clear()
@@ -182,11 +199,22 @@ export function ChatComposer({
         </Button>
       </AnimateIcon>
       <SelfieDialog
-        onSend={onSend}
+        onSend={send}
         disabled={disabled}
         className={cn(ICON_BUTTON_CLASS, "text-muted-foreground")}
       />
     </motion.div>
+  )
+
+  // Vaut pour un vocal comme pour des fichiers : au repos, toujours là ;
+  // en mode texte, seulement quand des fichiers attendent.
+  const viewOnceToggle = (
+    <ViewOnceToggle
+      pressed={isViewOnce}
+      onPressedChange={setIsViewOnce}
+      disabled={disabled}
+      className={ICON_BUTTON_CLASS}
+    />
   )
 
   return (
@@ -235,10 +263,16 @@ export function ChatComposer({
                     exit={{ opacity: 0, filter: blur.icon, transition: swap }}
                   >
                     <VoiceDock
-                      onSend={onSend}
+                      onSend={send}
                       onRecordingChange={onRecordingChange}
                       onOpenKeyboard={canWrite ? () => setIsKeyboardOpen(true) : undefined}
-                      leading={attachButtons}
+                      leading={
+                        <>
+                          {attachButtons}
+                          {viewOnceToggle}
+                        </>
+                      }
+                      isViewOnce={isViewOnce}
                       disabled={disabled}
                     />
                   </motion.div>
@@ -260,6 +294,7 @@ export function ChatComposer({
 
                     <div className="flex items-end gap-0.5 p-1 sm:gap-1 sm:p-1.5">
                       {attachButtons}
+                      {attachments.drafts.length > 0 && viewOnceToggle}
                       <EmojiPickerButton
                         open={isEmojiPickerOpen}
                         onOpenChange={handleEmojiPickerOpenChange}
@@ -317,6 +352,7 @@ export function ChatComposer({
 
       <ComposerHint
         view={view}
+        isViewOnce={isViewOnce}
         hasFailures={attachments.hasFailures}
         notice={restrictions.write ?? restrictions.voice}
       />
@@ -395,10 +431,13 @@ function RestrictedComposer({ notice }: { notice: string | null }) {
  */
 function ComposerHint({
   view,
+  isViewOnce,
   hasFailures,
   notice,
 }: {
   view: "voice" | "text"
+  /** Vue unique armée : on rappelle ce qu'elle fera. */
+  isViewOnce: boolean
   hasFailures: boolean
   /** Ce que vous ne pouvez pas envoyer ici, et pourquoi. */
   notice: string | null
@@ -414,7 +453,19 @@ function ComposerHint({
         className: "text-xs text-destructive sm:text-[11px]",
         content: "Réessayez ou retirez les fichiers en échec pour envoyer le message.",
       }
-    : notice
+    : isViewOnce
+      ? {
+          key: "view-once",
+          role: "status",
+          className: "flex items-center justify-center gap-1.5 text-xs text-read sm:text-[11px]",
+          content: (
+            <>
+              <ViewOnceIcon size={12} />
+              Vue unique · le prochain envoi s&apos;effacera dès qu&apos;il aura été ouvert
+            </>
+          ),
+        }
+      : notice
       ? {
           key: "notice",
           role: "status",

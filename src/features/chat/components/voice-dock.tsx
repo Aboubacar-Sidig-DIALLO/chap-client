@@ -38,7 +38,8 @@ import { MAX_VOICE_DURATION_MS, MIN_VOICE_DURATION_MS } from "../lib/config"
 import { formatDuration } from "../lib/format"
 import { createId } from "../lib/id"
 import type { VoiceRecording } from "../lib/voice-recording"
-import type { Attachment } from "../types"
+import type { Attachment, SendOptions } from "../types"
+import { ViewOnceIcon } from "./view-once-icon"
 import { VoiceHalo, type VoiceHaloTone } from "./voice-halo"
 import { useVoicePlayback } from "./voice-playback"
 
@@ -54,13 +55,18 @@ type Problem =
 
 interface VoiceDockProps {
   /** `id` : celui du direct (talkie-walkie) que ce vocal prolonge. */
-  onSend: (content: string, attachments: Attachment[], id?: string) => void
+  onSend: (content: string, attachments: Attachment[], options?: SendOptions) => void
   /** Prévient les autres participants qu'un vocal s'enregistre. */
   onRecordingChange?: (isRecording: boolean) => void
   /** Passe au clavier (message écrit) ; absent si l'écrit est interdit. */
   onOpenKeyboard?: () => void
-  /** Boutons secondaires à gauche au repos (pièce jointe, selfie). */
+  /** Boutons secondaires à gauche au repos (pièce jointe, selfie, vue unique). */
   leading: React.ReactNode
+  /**
+   * Le prochain vocal sera à écoute unique : il ne part pas en direct (on
+   * l'entendrait sans l'ouvrir) et l'orbe porte le symbole de la vue unique.
+   */
+  isViewOnce?: boolean
   disabled?: boolean
 }
 
@@ -78,6 +84,7 @@ export function VoiceDock({
   onRecordingChange,
   onOpenKeyboard,
   leading,
+  isViewOnce = false,
   disabled,
 }: VoiceDockProps) {
   const playback = useVoicePlayback()
@@ -140,7 +147,7 @@ export function VoiceDock({
         signal: controller.signal,
         voice: { durationMs: recording.durationMs, waveform: recording.waveform },
       })
-      onSend("", [attachment], id)
+      onSend("", [attachment], { id })
     } catch (uploadError) {
       if (uploadError instanceof Error && uploadError.name !== "AbortError") {
         setProblem({ kind: "resend", message: uploadError.message, recording, id })
@@ -189,7 +196,7 @@ export function VoiceDock({
       // Le vocal reçoit son id dès maintenant : c'est aussi celui du direct.
       const id = createId()
       talkIdRef.current = id
-      talkieSession.begin(id)
+      if (!isViewOnce) talkieSession.begin(id)
       void recorder.start()
     },
     onLock: () => setMode("locked"),
@@ -214,7 +221,8 @@ export function VoiceDock({
   const outgoing = talkie.outgoing
   const isLive = isActive && outgoing?.status === "live"
   const isHearingLive = talkie.incoming !== null && !talkie.isMuted && !talkie.isSuppressed
-  const canTalkLive = talkie.audience.length > 0 && !talkie.isSuppressed && !disabled
+  const canTalkLive =
+    talkie.audience.length > 0 && !talkie.isSuppressed && !disabled && !isViewOnce
 
   // Les ondes du bouton suivent la voix du moment : la vôtre, celle du direct reçu, ou celle du vocal lu.
   const isSpeaking = playback.nowPlaying?.isPlaying ?? false
@@ -247,6 +255,7 @@ export function VoiceDock({
     isLive,
     outgoing,
     canTalkLive,
+    isViewOnce,
   })
 
   const view = isSending ? "sending" : isHolding ? "hold" : isActive ? "locked" : "idle"
@@ -307,6 +316,7 @@ export function VoiceDock({
             getLevel={getLevel}
             isBreathing={view === "idle" && !isSpeaking && !isHearingLive}
             hasAudience={view === "idle" && canTalkLive}
+            isViewOnce={isViewOnce}
             isHolding={isHolding}
             lockProgress={pushToTalk.lockProgress}
             isCancelArmed={isCancelArmed}
@@ -369,6 +379,7 @@ interface CaptionState {
   outgoing: OutgoingTalk | null
   /** Quelqu'un a la conversation ouverte : il vous entendrait en direct. */
   canTalkLive: boolean
+  isViewOnce: boolean
 }
 
 /** La consigne sous le bouton micro : ce que fait le geste, et qui vous entend. */
@@ -382,8 +393,9 @@ function getCaption(state: CaptionState) {
   if (isActive && outgoing?.status === "busy" && outgoing.speaker) {
     return `${outgoing.speaker.name} parle · votre vocal suivra`
   }
-  if (isHolding) return "Relâchez pour envoyer"
-  if (isActive) return "Verrouillé · touchez pour envoyer"
+  if (isHolding) return state.isViewOnce ? "Relâchez pour envoyer · écoute unique" : "Relâchez pour envoyer"
+  if (isActive) return state.isViewOnce ? "Verrouillé · écoute unique" : "Verrouillé · touchez pour envoyer"
+  if (state.isViewOnce) return "Écoute unique · maintenir pour parler"
   return state.canTalkLive ? "Maintenir pour parler en direct" : "Maintenir pour parler"
 }
 
@@ -394,6 +406,8 @@ interface MicButtonProps {
   isBreathing: boolean
   /** Quelqu'un est là pour vous entendre en direct : un point « présent » sur l'orbe. */
   hasAudience: boolean
+  /** Le vocal sera à écoute unique : son symbole sur l'orbe. */
+  isViewOnce: boolean
   isHolding: boolean
   /** Avancée du glissement vers le haut (0 à 1), qui verrouille l'enregistrement. */
   lockProgress: MotionValue<number>
@@ -413,6 +427,7 @@ function MicButton({
   getLevel,
   isBreathing,
   hasAudience,
+  isViewOnce,
   isHolding,
   lockProgress,
   isCancelArmed,
@@ -479,6 +494,18 @@ function MicButton({
               className="pointer-events-none absolute top-0.5 right-0.5 grid size-4 place-items-center rounded-full bg-background shadow-sm"
             >
               <LiveDot className="size-2.5" />
+            </motion.span>
+          )}
+          {isViewOnce && (
+            <motion.span
+              key="view-once"
+              aria-hidden
+              initial={{ opacity: 0, scale: scale.icon, rotate: -90 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0, transition: pop }}
+              exit={{ opacity: 0, scale: scale.icon, transition: swap }}
+              className="pointer-events-none absolute -top-0.5 -right-0.5 grid size-6 place-items-center rounded-full bg-read text-white shadow-sm ring-2 ring-background"
+            >
+              <ViewOnceIcon size={14} />
             </motion.span>
           )}
         </AnimatePresence>
