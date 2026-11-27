@@ -7,6 +7,7 @@ import { CallEnd01Icon, HeadsetIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { playSound } from "@/components/ui-sounds"
+import { isQuietNow } from "@/features/quiet-mode/lib/quiet-store"
 import { joinCallHref } from "@/features/auth/lib/routes"
 import { VoiceHalo } from "@/features/chat/components/voice-halo"
 import { getInitials } from "@/features/chat/lib/format"
@@ -64,8 +65,12 @@ function Ringing({ call, onDismiss }: { call: IncomingCall; onDismiss: () => voi
   const { conversation, startedBy } = call
 
   useEffect(() => {
-    playSound("ring")
-    const ring = setInterval(() => playSound("ring"), RING_INTERVAL_MS)
+    // Heures calmes : l'appel s'affiche, sans sonner.
+    const ringUnlessQuiet = () => {
+      if (!isQuietNow()) playSound("ring")
+    }
+    ringUnlessQuiet()
+    const ring = setInterval(ringUnlessQuiet, RING_INTERVAL_MS)
     const stop = setTimeout(() => dismiss(), RING_DURATION_MS)
     return () => {
       clearInterval(ring)

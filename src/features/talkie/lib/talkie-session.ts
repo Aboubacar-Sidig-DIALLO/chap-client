@@ -38,9 +38,12 @@ function storeMuted(isMuted: boolean) {
 
 /** Ce qu'affiche une parole refusée (`null` : pas de réponse du serveur). */
 function refusal(response: Extract<TalkStartAck, { ok: false }> | null) {
-  if (response?.reason === "busy") return { status: "busy" as const, speaker: response.speaker }
-  if (response?.reason === "alone") return { status: "alone" as const, speaker: null }
-  return { status: "unavailable" as const, speaker: null }
+  const none = { speaker: null, deferred: [] }
+  if (response?.reason === "busy") return { ...none, status: "busy" as const, speaker: response.speaker }
+  if (response?.reason === "alone") return { ...none, status: "alone" as const }
+  // Heures calmes : le talkie bascule en vocal différé.
+  if (response?.reason === "quiet") return { ...none, status: "quiet" as const, deferred: response.users }
+  return { ...none, status: "unavailable" as const }
 }
 
 /** Ce qu'on retient de la voix reçue, pour décider si elle a été entendue. */
@@ -201,13 +204,13 @@ export class TalkieSession {
 
     const { audience, isSuppressed } = this.snapshot
     if (!this.socket.connected || isSuppressed || audience.length === 0) {
-      this.setOutgoing({ id, status: "alone", listeners: [], speaker: null })
+      this.setOutgoing({ id, status: "alone", listeners: [], deferred: [], speaker: null })
       return
     }
 
     this.pending = []
     this.lateEnd = null
-    this.setOutgoing({ id, status: "requesting", listeners: [], speaker: null })
+    this.setOutgoing({ id, status: "requesting", listeners: [], deferred: [], speaker: null })
 
     this.socket.timeout(START_TIMEOUT_MS).emit("talkie:start", { id }, (error, response) => {
       const isCurrent = this.snapshot.outgoing?.id === id
@@ -227,7 +230,13 @@ export class TalkieSession {
       this.pending = []
 
       if (isCurrent) {
-        this.setOutgoing({ id, status: "live", listeners: response.listeners, speaker: null })
+        this.setOutgoing({
+          id,
+          status: "live",
+          listeners: response.listeners,
+          deferred: response.deferred,
+          speaker: null,
+        })
       } else if (lateEnd) {
         this.socket.emit("talkie:end", { cancelled: lateEnd.cancelled })
       }

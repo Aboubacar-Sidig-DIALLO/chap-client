@@ -6,6 +6,7 @@ import { isAdmin } from "@/features/admin/lib/roles"
 import { buttonVariants } from "@/components/ui/button"
 import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
+import { QuietModeButton, QuietStatus } from "@/features/quiet-mode/components/quiet-mode-button"
 import { APP_NAME } from "@/lib/config"
 import { SignOutButton } from "./sign-out-button"
 
@@ -44,7 +45,9 @@ export function AccountBar({ user }: { user: SessionUser }) {
         <UserAvatar aria-hidden user={{ id: user.id, name: user.name, avatarUrl: user.image ?? undefined }} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{user.name}</span>
-          <span className="block truncate text-xs text-muted-foreground">Voir mon profil</span>
+          <span className="block truncate text-xs text-muted-foreground">
+            <QuietStatus fallback="Voir mon profil" />
+          </span>
         </span>
         <HugeiconsIcon
           icon={ArrowRight01Icon}
@@ -64,6 +67,7 @@ export function AccountBar({ user }: { user: SessionUser }) {
           <HugeiconsIcon icon={UserShield01Icon} size={18} strokeWidth={2} />
         </Link>
       )}
+      <QuietModeButton />
       <SignOutButton />
     </div>
   )

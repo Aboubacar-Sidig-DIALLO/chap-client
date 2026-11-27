@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
 import { useTalkie } from "@/features/talkie/components/talkie-provider"
-import { formatHearers, formatPresent } from "@/features/talkie/lib/labels"
+import { formatHearers, formatPresent, formatQuiet } from "@/features/talkie/lib/labels"
 import type { OutgoingTalk } from "@/features/talkie/types"
 import { useStreamLevel } from "../hooks/use-audio-level"
 import { usePushToTalk } from "../hooks/use-push-to-talk"
@@ -388,7 +388,16 @@ function getCaption(state: CaptionState) {
   if (isSending) return "Envoi…"
   if (isStarting) return "Ouverture du micro…"
   if (isHolding && isCancelArmed) return "Relâchez pour annuler"
-  if (isLive && outgoing) return `En direct · ${formatHearers(outgoing.listeners)}`
+  if (isLive && outgoing) {
+    // Certains sont en heures calmes : ils recevront le vocal, à écouter plus tard.
+    const quiet = outgoing.deferred.length > 0 ? ` · ${formatQuiet(outgoing.deferred)}` : ""
+    return `En direct · ${formatHearers(outgoing.listeners)}${quiet}`
+  }
+  if (isActive && outgoing?.status === "quiet" && outgoing.deferred.length > 0) {
+    // Heures calmes de tous : le talkie bascule en vocal différé.
+    const waits = outgoing.deferred.length > 1 ? "les attendra" : "l'attendra"
+    return `${formatQuiet(outgoing.deferred)} · votre vocal ${waits}`
+  }
   if (isActive && outgoing?.status === "busy" && outgoing.speaker) {
     return `${outgoing.speaker.name} parle · votre vocal suivra`
   }

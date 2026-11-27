@@ -33,8 +33,11 @@ export type MessageActionAck = { ok: true } | { ok: false; error: string }
  * quelqu'un parle déjà (`busy`), ou vocal interdit ici.
  */
 export type TalkStartAck =
-  | { ok: true; listeners: ChatUser[] }
+  /** `deferred` : là, mais en heures calmes ; ils recevront le vocal, sans l'entendre en direct. */
+  | { ok: true; listeners: ChatUser[]; deferred: ChatUser[] }
   | { ok: false; reason: "alone" }
+  /** Tous ceux qui sont là sont en heures calmes : le vocal partira, à écouter plus tard. */
+  | { ok: false; reason: "quiet"; users: ChatUser[] }
   | { ok: false; reason: "busy"; speaker: ChatUser }
   | { ok: false; reason: "forbidden" | "invalid"; error: string }
 

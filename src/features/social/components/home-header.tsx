@@ -4,6 +4,7 @@ import Link from "next/link"
 import type { SessionUser } from "@/features/auth/components/session-gate"
 import { ROUTES } from "@/features/auth/lib/routes"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
+import { QuietModeButton, QuietStatus } from "@/features/quiet-mode/components/quiet-mode-button"
 import { greetingFor } from "../lib/greeting"
 import { SignOutButton } from "./sign-out-button"
 
@@ -27,8 +28,11 @@ export function HomeHeader({ user, isPageTitle }: HomeHeaderProps) {
       </Link>
       <div className="min-w-0 flex-1">
         <Title className="truncate text-2xl font-semibold tracking-tight">{greetingFor(user.name)}</Title>
-        <p className="truncate text-sm text-muted-foreground">Avec qui voulez-vous parler aujourd&apos;hui ?</p>
+        <p className="truncate text-sm text-muted-foreground">
+          <QuietStatus fallback="Avec qui voulez-vous parler aujourd'hui ?" />
+        </p>
       </div>
+      <QuietModeButton />
       <SignOutButton />
     </header>
   )

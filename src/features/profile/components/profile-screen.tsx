@@ -14,6 +14,8 @@ import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { Section } from "@/features/social/components/section"
 import { signOut } from "@/features/auth/lib/sign-out"
 import { NotificationSettings } from "@/features/push/components/notification-settings"
+import { QUIET_SETTINGS_ANCHOR } from "@/features/quiet-mode/components/quiet-mode-button"
+import { QuietModeSettings } from "@/features/quiet-mode/components/quiet-mode-settings"
 import { PAGE_ENTRANCE } from "@/lib/motion"
 import { DeleteAccountDialog } from "./delete-account-dialog"
 import { EmailForm } from "./email-form"
@@ -70,6 +72,13 @@ export function ProfileScreen({ user }: { user: SessionUser }) {
         <Section title="Notifications">
           <NotificationSettings />
         </Section>
+
+        {/* Atteint depuis le menu « Ne pas déranger » de l'accueil. */}
+        <div id={QUIET_SETTINGS_ANCHOR} className="scroll-mt-6">
+          <Section title="Heures calmes">
+            <QuietModeSettings />
+          </Section>
+        </div>
 
         <Section title="Compte">
           <div className="divide-y overflow-hidden rounded-3xl border bg-card">

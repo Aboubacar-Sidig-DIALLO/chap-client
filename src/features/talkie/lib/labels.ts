@@ -8,6 +8,13 @@ export function formatHearers(users: ChatUser[]) {
   return `${formatNameList(users.map((user) => user.name))} vous ${verb}`
 }
 
+/** « Sarah est en mode calme », « Sarah et Paul sont en mode calme », « 3 personnes sont en mode calme ». */
+export function formatQuiet(users: ChatUser[]) {
+  if (users.length > 2) return `${users.length} personnes sont en mode calme`
+  const verb = users.length > 1 ? "sont" : "est"
+  return `${formatNameList(users.map((user) => user.name))} ${verb} en mode calme`
+}
+
 /** « Sarah est là », « Sarah et Paul sont là », « 4 personnes sont là ». */
 export function formatPresent(users: ChatUser[]) {
   if (users.length > 2) return `${users.length} personnes sont là`

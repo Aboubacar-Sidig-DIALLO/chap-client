@@ -5,12 +5,13 @@ import type { ChatUser } from "@/features/chat/types"
  * - `requesting` : le serveur est interrogé (le début de la voix est gardé) ;
  * - `live` : on vous entend en direct ;
  * - `alone` : personne n'a la conversation ouverte, ou vous êtes en appel ;
+ * - `quiet` : ceux qui l'ont ouverte sont en heures calmes (vocal différé) ;
  * - `busy` : quelqu'un parle déjà ;
  * - `unavailable` : direct refusé ou interrompu.
  *
  * Dans tous les cas, l'enregistrement part ensuite comme vocal classique.
  */
-export type OutgoingTalkStatus = "requesting" | "live" | "alone" | "busy" | "unavailable"
+export type OutgoingTalkStatus = "requesting" | "live" | "alone" | "quiet" | "busy" | "unavailable"
 
 export interface OutgoingTalk {
   /** Id du vocal qui suivra. */
@@ -18,6 +19,8 @@ export interface OutgoingTalk {
   status: OutgoingTalkStatus
   /** Qui vous entend (en direct). */
   listeners: ChatUser[]
+  /** Là, mais en heures calmes : ils recevront le vocal, à écouter plus tard. */
+  deferred: ChatUser[]
   /** Qui parle déjà (`busy`). */
   speaker: ChatUser | null
 }

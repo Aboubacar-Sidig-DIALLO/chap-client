@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { playSound } from "@/components/ui-sounds"
+import { isQuietNow } from "@/features/quiet-mode/lib/quiet-store"
 import { EXPIRY_CHECK_INTERVAL_MS } from "@/features/chat/lib/config"
 import { getErrorMessage } from "@/lib/api"
 import { socialApi } from "../lib/api"
@@ -89,7 +90,8 @@ export function useSocial(activeKey: string | null = null) {
 
   function announce(notice: HomeNotice) {
     setAnnounced({ id: ++noticeCountRef.current, notice })
-    playSound("pop")
+    // Heures calmes : l'annonce s'affiche, sans bruit.
+    if (!isQuietNow()) playSound("pop")
   }
 
   useSocialEvents({

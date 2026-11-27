@@ -4,7 +4,8 @@
  *
  * Contenu d'une notification (envoyé par le serveur, chiffré jusqu'ici) —
  * à garder synchronisé avec `sse/src/push/push.types.ts` :
- * `{ tag, kind: "message" | "call" | "social", title, body, url, createdAt }`.
+ * `{ tag, kind: "message" | "call" | "social", title, body, url, createdAt, silent? }`.
+ * `silent` : heures calmes du destinataire, la notification arrive sans bruit.
  */
 
 self.addEventListener("install", () => self.skipWaiting())
@@ -35,7 +36,7 @@ async function isAppVisible() {
   return windows.some((client) => client.visibilityState === "visible")
 }
 
-async function present({ tag, kind, title, body, url, createdAt }) {
+async function present({ tag, kind, title, body, url, createdAt, silent = false }) {
   if (await isAppVisible()) return
 
   // Plusieurs messages d'une même conversation : une seule notification, qui les compte.
@@ -48,14 +49,15 @@ async function present({ tag, kind, title, body, url, createdAt }) {
   await self.registration.showNotification(count > 1 ? `${title} · ${count} messages` : title, {
     body,
     tag,
-    // Remplacer la notification précédente fait quand même vibrer / sonner.
-    renotify: true,
+    // Remplacer la notification précédente fait quand même vibrer / sonner (sauf en heures calmes).
+    renotify: !silent,
     icon: "/icon",
     lang: "fr",
     timestamp: Date.parse(createdAt) || Date.now(),
     // Un appel reste affiché tant qu'on n'y a pas répondu (le serveur cesse de l'annoncer après la sonnerie).
     requireInteraction: kind === "call",
-    vibrate: kind === "call" ? [400, 200, 400, 200, 400] : [120],
+    // Heures calmes : ni son ni vibration (les navigateurs refusent `silent` avec `vibrate`).
+    ...(silent ? { silent: true } : { vibrate: kind === "call" ? [400, 200, 400, 200, 400] : [120] }),
     data: { url, kind, count },
   })
 }
