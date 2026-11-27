@@ -25,7 +25,6 @@ import { Mic } from "@/components/animate-ui/icons/hugeicons/mic"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
-import { LiveDot } from "@/features/call/components/live-dot"
 import { useTalkie } from "@/features/talkie/components/talkie-provider"
 import { formatHearers, formatPresent } from "@/features/talkie/lib/labels"
 import type { OutgoingTalk } from "@/features/talkie/types"
@@ -452,6 +451,7 @@ function MicButton({
         <motion.div
           animate={{ scale: isCancelArmed ? 0.9 : isHolding ? 1.14 : 1 }}
           transition={pop}
+          className="relative"
         >
           <AnimateIcon animateOnHover="wiggle" asChild>
             <button
@@ -480,35 +480,27 @@ function MicButton({
               </VoiceHalo>
             </button>
           </AnimateIcon>
+
+          {/* Sur le bord de l'orbe, en haut à droite ; ils suivent l'orbe quand il grossit. */}
+          <AnimatePresence>
+            {hasAudience && (
+              // Quelqu'un est là : maintenir, c'est lui parler en direct.
+              <OrbBadge key="audience" className="size-4 bg-background">
+                <span className="relative inline-flex size-2.5">
+                  <span className="absolute inset-0 rounded-full bg-emerald-500 motion-safe:animate-voice-breathe" />
+                  <span className="relative size-full rounded-full bg-emerald-500" />
+                </span>
+              </OrbBadge>
+            )}
+            {isViewOnce && (
+              // Le vocal partira en écoute unique.
+              <OrbBadge key="view-once" isSpinning className="size-6 bg-background text-read">
+                <ViewOnceIcon size={16} />
+              </OrbBadge>
+            )}
+          </AnimatePresence>
         </motion.div>
 
-        {/* Quelqu'un est là : maintenir, c'est lui parler en direct. */}
-        <AnimatePresence>
-          {hasAudience && (
-            <motion.span
-              key="audience"
-              aria-hidden
-              initial={{ opacity: 0, scale: scale.icon }}
-              animate={{ opacity: 1, scale: 1, transition: pop }}
-              exit={{ opacity: 0, scale: scale.icon, transition: swap }}
-              className="pointer-events-none absolute top-0.5 right-0.5 grid size-4 place-items-center rounded-full bg-background shadow-sm"
-            >
-              <LiveDot className="size-2.5" />
-            </motion.span>
-          )}
-          {isViewOnce && (
-            <motion.span
-              key="view-once"
-              aria-hidden
-              initial={{ opacity: 0, scale: scale.icon, rotate: -90 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0, transition: pop }}
-              exit={{ opacity: 0, scale: scale.icon, transition: swap }}
-              className="pointer-events-none absolute -top-0.5 -right-0.5 grid size-6 place-items-center rounded-full bg-read text-white shadow-sm ring-2 ring-background"
-            >
-              <ViewOnceIcon size={14} />
-            </motion.span>
-          )}
-        </AnimatePresence>
       </motion.div>
 
       <span className="relative grid h-4 place-items-center">
@@ -529,6 +521,44 @@ function MicButton({
         </AnimatePresence>
       </span>
     </div>
+  )
+}
+
+/** Point du bord de l'orbe à 45°, en haut à droite (en % de son diamètre). */
+const ORB_EDGE_45 = { left: "85.36%", top: "14.64%" }
+
+/**
+ * Pastille posée sur le bord de l'orbe : centrée sur son cercle, détachée
+ * par un liseré du fond. Elle apparaît d'un léger rebond.
+ */
+function OrbBadge({
+  isSpinning = false,
+  className,
+  children,
+}: {
+  /** Entre en faisant un quart de tour (le cercle de la vue unique). */
+  isSpinning?: boolean
+  className?: string
+  children: React.ReactNode
+}) {
+  const pop = useTempoTransition(spring.pop)
+  const swap = useTempoTransition(transition.swap)
+
+  return (
+    <motion.span
+      aria-hidden
+      initial={{ opacity: 0, scale: scale.icon, rotate: isSpinning ? -90 : 0 }}
+      animate={{ opacity: 1, scale: 1, rotate: 0, transition: pop }}
+      exit={{ opacity: 0, scale: scale.icon, transition: swap }}
+      // Centrée sur le point du cercle : le décalage passe par Motion (qui gère la transformation).
+      style={{ ...ORB_EDGE_45, x: "-50%", y: "-50%" }}
+      className={cn(
+        "pointer-events-none absolute grid place-items-center rounded-full shadow-md ring-2 ring-background",
+        className
+      )}
+    >
+      {children}
+    </motion.span>
   )
 }
 
