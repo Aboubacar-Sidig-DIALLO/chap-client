@@ -19,6 +19,8 @@ export interface ChatUser {
   id: string
   name: string
   avatarUrl?: string
+  /** Invité d'un appel de groupe, sans compte : présent le temps de l'appel seulement. */
+  isGuest?: boolean
 }
 
 /** Métadonnées d'un message vocal, mesurées pendant l'enregistrement. */

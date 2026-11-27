@@ -1,9 +1,11 @@
 "use client"
 
-import { MicOff01Icon } from "@hugeicons/core-free-icons"
+import { useState } from "react"
+import { Cancel01Icon, MicOff01Icon, UserIcon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AnimatePresence, motion } from "motion/react"
 import { ReducedMotionConfig, useShouldReduceMotion } from "@animate-ui/react/utils/motion"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { cn } from "@/lib/utils"
 import { Emoji } from "@/features/chat/components/emoji"
 import { VoiceHalo } from "@/features/chat/components/voice-halo"
@@ -21,6 +23,8 @@ interface ParticipantOrbProps {
   getLevel: () => number
   reactions: FloatingReaction[]
   size: number
+  /** Invité, vu par un propriétaire ou administrateur : le retirer de l'appel (erreur renvoyée, ou `null`). */
+  onRemove?: () => Promise<string | null>
 }
 
 /**
@@ -35,6 +39,7 @@ export function ParticipantOrb({
   getLevel,
   reactions,
   size,
+  onRemove,
 }: ParticipantOrbProps) {
   const { user, audio, video } = participant
   const isMuted = !audio
@@ -42,7 +47,7 @@ export function ParticipantOrb({
 
   return (
     <figure
-      aria-label={`${name}${isMuted ? ", micro coupé" : ""}${video ? ", caméra allumée" : ""}`}
+      aria-label={`${name}${user.isGuest ? ", invité" : ""}${isMuted ? ", micro coupé" : ""}${video ? ", caméra allumée" : ""}`}
       className="relative flex flex-col items-center gap-3"
     >
       <div className="relative">
@@ -68,10 +73,63 @@ export function ParticipantOrb({
         )}
       </div>
 
-      <figcaption className="max-w-full truncate text-sm font-medium">{name}</figcaption>
+      <figcaption className="flex max-w-full flex-col items-center gap-1">
+        <span className="max-w-full truncate text-sm font-medium">{name}</span>
+        {user.isGuest && (onRemove ? <RemovableGuestBadge name={user.name} onRemove={onRemove} /> : <GuestBadge />)}
+      </figcaption>
 
       <RisingReactions reactions={reactions} />
     </figure>
+  )
+}
+
+const GUEST_BADGE_CLASS =
+  "flex items-center gap-1 rounded-full bg-amber-500/14 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300"
+
+/** Personne extérieure au groupe, présente le temps de l'appel. */
+function GuestBadge() {
+  return (
+    <span className={GUEST_BADGE_CLASS}>
+      <HugeiconsIcon icon={UserIcon} size={11} strokeWidth={2.2} aria-hidden />
+      Invité
+    </span>
+  )
+}
+
+/** Pour le propriétaire et les administrateurs : l'étiquette « Invité » permet de le retirer. */
+function RemovableGuestBadge({ name, onRemove }: { name: string; onRemove: () => Promise<string | null> }) {
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsConfirmOpen(true)}
+        aria-label={`${name} est invité : le retirer de l'appel`}
+        className={cn(GUEST_BADGE_CLASS, "press outline-none hover:bg-amber-500/24 focus-visible:ring-2 focus-visible:ring-ring/50")}
+      >
+        <HugeiconsIcon icon={UserIcon} size={11} strokeWidth={2.2} aria-hidden />
+        Invité
+        <HugeiconsIcon icon={Cancel01Icon} size={10} strokeWidth={2.4} aria-hidden className="opacity-70" />
+      </button>
+      {error && (
+        <span role="alert" className="max-w-40 text-center text-[11px] text-destructive">
+          {error}
+        </span>
+      )}
+      <ConfirmDialog
+        open={isConfirmOpen}
+        onOpenChange={setIsConfirmOpen}
+        title={`Retirer ${name} de l'appel ?`}
+        description="Il quittera l'appel aussitôt et ne pourra plus y revenir avec son lien."
+        confirmLabel="Retirer"
+        onConfirm={() => {
+          setError(null)
+          void onRemove().then(setError)
+        }}
+      />
+    </>
   )
 }
 

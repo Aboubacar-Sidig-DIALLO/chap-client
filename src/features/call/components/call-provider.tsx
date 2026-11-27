@@ -1,8 +1,16 @@
 "use client"
 
 import { createContext, use, useEffect, useState, useSyncExternalStore } from "react"
-import type { ChatSocket } from "@/features/chat/lib/socket"
 import { CallSession, type CallSnapshot } from "../lib/call-session"
+import type { CallSocket } from "../lib/call-socket"
+
+/** Ce que peuvent faire le propriétaire et les administrateurs d'un groupe pendant son appel. */
+export interface GuestControls {
+  /** Ouvre l'invitation d'une personne extérieure (lien à usage unique). */
+  onInvite: () => void
+  /** Retire un invité de l'appel ; renvoie l'erreur à afficher, ou `null`. */
+  onRemove: (peerId: string) => Promise<string | null>
+}
 
 interface CallContextValue {
   call: CallSnapshot
@@ -23,6 +31,13 @@ interface CallContextValue {
   setIsExpanded: (expanded: boolean) => void
   /** Lance l'appel, y répond ou entre dans le direct, et ouvre la scène. */
   join: () => void
+  /**
+   * Vous êtes un invité, sans compte : l'appel est tout ce que vous voyez
+   * (pas de conversation à laquelle revenir).
+   */
+  isGuest: boolean
+  /** Propriétaire ou administrateur dans un appel de groupe ; `null` sinon. */
+  guestControls: GuestControls | null
 }
 
 const CallContext = createContext<CallContextValue | null>(null)
@@ -34,16 +49,26 @@ export function useCall() {
 }
 
 interface CallProviderProps {
-  /** La connexion du chat, qui porte aussi la signalisation du direct. */
-  socket: ChatSocket
+  /** La connexion qui porte la signalisation : celle du chat, ou celle d'un invité. */
+  socket: CallSocket
   isDirect: boolean
   title: string
   currentUserId: string
+  isGuest?: boolean
+  guestControls?: GuestControls | null
   children: React.ReactNode
 }
 
 /** L'appel de la conversation, pour toute la page (en-tête, scène, mini-appel). */
-export function CallProvider({ socket, isDirect, title, currentUserId, children }: CallProviderProps) {
+export function CallProvider({
+  socket,
+  isDirect,
+  title,
+  currentUserId,
+  isGuest = false,
+  guestControls = null,
+  children,
+}: CallProviderProps) {
   const [session] = useState(() => new CallSession(socket))
   const [isExpanded, setIsExpanded] = useState(true)
   const call = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getServerSnapshot)
@@ -67,6 +92,8 @@ export function CallProvider({ socket, isDirect, title, currentUserId, children 
         isExpanded,
         setIsExpanded,
         join,
+        isGuest,
+        guestControls,
       }}
     >
       {children}

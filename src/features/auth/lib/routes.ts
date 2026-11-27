@@ -14,6 +14,8 @@ export const ROUTES = {
   group: (groupId: string) => `/groupes/${encodeURIComponent(groupId)}`,
   /** Invitation éphémère (lien ou QR code) : devenir ami, ou rejoindre un groupe. */
   invite: (token: string) => `/invitation/${encodeURIComponent(token)}`,
+  /** Invité d'un appel de groupe, sans compte : l'appel, et rien d'autre. */
+  guestCall: (token: string) => `/appel/${encodeURIComponent(token)}`,
 } as const
 
 /** Paramètre d'URL des pages de connexion : la page où revenir une fois connecté. */

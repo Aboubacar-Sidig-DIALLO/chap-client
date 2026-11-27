@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils"
 import { UserAvatar } from "@/features/chat/components/user-avatar"
 import { formatCallDuration, formatNameList, formatTimeRange } from "@/features/chat/lib/format"
+import { participantName } from "../lib/participants"
 import type { CallSummary } from "../types"
 import { useCall } from "./call-provider"
 
@@ -82,7 +83,7 @@ function describeGroupLive(call: CallSummary, outcome: CallOutcome, currentUserI
   const kind = call.hadVideo ? "vidéo" : "audio"
   const duration = formatCallDuration(call.durationMs)
   const others = call.participants.filter((user) => user.id !== currentUserId)
-  const names = formatNameList(others.map((user) => user.name))
+  const names = formatNameList(others.map(participantName))
 
   switch (outcome) {
     case "attended":

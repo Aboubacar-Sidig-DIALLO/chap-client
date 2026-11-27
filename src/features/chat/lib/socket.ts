@@ -1,11 +1,5 @@
 import { io, type Socket } from "socket.io-client"
-import type {
-  CallJoinAck,
-  CallMedia,
-  CallParticipant,
-  CallReaction,
-  CallSignal,
-} from "@/features/call/types"
+import type { CallClientEvents, CallServerEvents } from "@/features/call/lib/call-socket"
 import type {
   ChatUser,
   ConversationInfo,
@@ -44,8 +38,11 @@ export type TalkStartAck =
   | { ok: false; reason: "busy"; speaker: ChatUser }
   | { ok: false; reason: "forbidden" | "invalid"; error: string }
 
-/** Contrat Socket.io — à garder synchronisé avec le serveur (`sse/src/chat/chat.types.ts`). */
-interface ServerToClientEvents {
+/**
+ * Contrat Socket.io — à garder synchronisé avec le serveur (`sse/src/chat/chat.types.ts`).
+ * L'appel y a ses événements, partagés avec la connexion des invités (`CallServerEvents`).
+ */
+interface ServerToClientEvents extends CallServerEvents {
   /** Conversation ouverte (accès vérifié), juste avant son historique. */
   "conversation:ready": (conversation: ConversationInfo) => void
   /** Le groupe a changé : nom, photo, ou vos droits. */
@@ -80,14 +77,6 @@ interface ServerToClientEvents {
   "message:reactions": (event: { messageId: string; reactions: Reaction[] }) => void
   /** Un destinataire a ouvert un message à vue unique. */
   "view-once:opened": (event: { messageId: string; user: ChatUser }) => void
-  /** Participants de l'appel, à la connexion puis à chaque changement. */
-  "call:participants": (participants: CallParticipant[]) => void
-  /** Appel entre amis terminé par l'autre (raccroché, refusé, sans réponse). */
-  "call:ended": () => void
-  /** Message WebRTC d'un autre participant (`peerId` : l'expéditeur). */
-  "call:signal": (signal: CallSignal) => void
-  /** Réaction envoyée pendant le direct. */
-  "call:reaction": (reaction: CallReaction) => void
   /** Talkie-walkie : quelqu'un prend la parole en direct (`id` : celui du vocal qui suivra). */
   "talkie:started": (event: { id: string; user: ChatUser }) => void
   /** Un morceau de sa voix (PCM 16 bits, 16 kHz, mono). */
@@ -96,7 +85,7 @@ interface ServerToClientEvents {
   "talkie:ended": (event: { id: string; user: ChatUser; cancelled: boolean }) => void
 }
 
-interface ClientToServerEvents {
+interface ClientToServerEvents extends CallClientEvents {
   "message:send": (
     payload: {
       id: string
@@ -136,17 +125,8 @@ interface ClientToServerEvents {
     emoji: ReactionEmoji | null
     atMs?: number
   }) => void
-  /** Rejoint le direct ; la réponse liste les participants à qui se connecter. */
-  "call:join": (media: CallMedia, ack: (response: CallJoinAck) => void) => void
-  /** Quitte le direct ; entre amis, raccroche (l'appel prend fin pour les deux). */
-  "call:leave": () => void
-  /** Refuse l'appel d'un ami qui sonne. */
-  "call:decline": () => void
-  /** Micro coupé ou rétabli, caméra allumée ou éteinte. */
-  "call:media": (media: CallMedia) => void
-  /** Message WebRTC pour un autre participant (`peerId` : le destinataire). */
-  "call:signal": (signal: CallSignal) => void
-  "call:react": (emoji: ReactionEmoji) => void
+  /** Retire un invité de l'appel du groupe (propriétaire et administrateurs). */
+  "call:remove-guest": (peerId: string, ack: (response: MessageActionAck) => void) => void
   /** Demande la parole en direct pour le vocal `id`. */
   "talkie:start": (payload: { id: string }, ack: (response: TalkStartAck) => void) => void
   /** Un morceau de voix (PCM 16 bits, 16 kHz, mono). */
@@ -178,7 +158,11 @@ export function createChatSocket(conversation: ConversationRef): ChatSocket {
   })
 }
 
-type ChatSocketHandlers = Partial<ServerToClientEvents> & {
+/** Les événements que reçoit une connexion (celle du chat, ou celle d'un invité d'appel). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- seuls comptent les événements reçus
+type ListenEventsOf<S> = S extends Socket<infer Events, any> ? Events : never
+
+type SocketHandlers<S> = Partial<ListenEventsOf<S>> & {
   connect?: () => void
   disconnect?: (reason: Socket.DisconnectReason) => void
   connect_error?: (error: Error) => void
@@ -188,7 +172,8 @@ type ChatSocketHandlers = Partial<ServerToClientEvents> & {
  * Attache des écouteurs à la connexion et renvoie de quoi détacher ceux-là, et
  * seulement eux : chat et direct partagent la même connexion.
  */
-export function listen(socket: ChatSocket, handlers: ChatSocketHandlers) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- toute connexion typée, quels que soient ses envois
+export function listen<S extends Socket<any, any>>(socket: S, handlers: SocketHandlers<S>) {
   // Les surcharges typées de `on` / `off` ne se prêtent pas à une boucle ;
   // le typage est garanti par `ChatSocketHandlers`.
   const entries = Object.entries(handlers) as [never, never][]

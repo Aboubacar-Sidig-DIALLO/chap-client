@@ -7,6 +7,7 @@ import { AutoJoinCall } from "@/features/call/components/auto-join-call"
 import { CallMini } from "@/features/call/components/call-mini"
 import { CallProvider } from "@/features/call/components/call-provider"
 import { CallStage } from "@/features/call/components/call-stage"
+import { GuestInviteDialog } from "@/features/call-guests/components/guest-invite-dialog"
 import { LiveBanner } from "@/features/call/components/live-banner"
 import { LiveButton } from "@/features/call/components/live-button"
 import { GroupInfoDialog } from "@/features/social/components/group-info/group-info-dialog"
@@ -83,10 +84,12 @@ export function ChatRoom({
     unsendMessage,
     removeAttachment,
     openViewOnce,
+    removeCallGuest,
   } = useChat(currentUser, conversation, { onUnauthorized: onSessionExpired })
   const attachments = useAttachmentDrafts()
   const router = useRouter()
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false)
+  const [isGuestInviteOpen, setIsGuestInviteOpen] = useState(false)
   useUnreadTitle(unreadCount)
   useVisualViewport()
 
@@ -117,10 +120,31 @@ export function ChatRoom({
           onOpenDetails: () => setIsGroupInfoOpen(true),
         }
 
+  // Propriétaire et administrateurs d'un groupe : inviter quelqu'un d'extérieur
+  // à l'appel, le temps de l'appel, et l'en retirer (le serveur revérifie).
+  const guestControls =
+    conversation.type === "group" && rights.moderate
+      ? { onInvite: () => setIsGuestInviteOpen(true), onRemove: removeCallGuest }
+      : null
+
   return (
     // L'appel (audio / vidéo) partage la connexion du chat.
-    <CallProvider socket={socket} isDirect={isDirect} title={title} currentUserId={currentUser.id}>
+    <CallProvider
+      socket={socket}
+      isDirect={isDirect}
+      title={title}
+      currentUserId={currentUser.id}
+      guestControls={guestControls}
+    >
       {autoJoinCall && <AutoJoinCall onHandled={onAutoJoinHandled} />}
+      {conversation.type === "group" && guestControls && (
+        <GuestInviteDialog
+          groupId={conversation.groupId}
+          groupName={title}
+          open={isGuestInviteOpen}
+          onOpenChange={setIsGuestInviteOpen}
+        />
+      )}
       {/* L'écoute est coordonnée pour toute la conversation (un vocal à la fois, enchaînement). */}
       <VoicePlaybackProvider
         messages={messages}

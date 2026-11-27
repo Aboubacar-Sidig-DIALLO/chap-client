@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowShrink02Icon } from "@hugeicons/core-free-icons"
+import { ArrowShrink02Icon, UserAdd01Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { AnimatePresence, motion } from "motion/react"
 import {
@@ -68,20 +68,36 @@ export function CallStage() {
 }
 
 function StageHeader({ onMinimize }: { onMinimize: () => void }) {
-  const { isDirect } = useCall()
+  const { isDirect, isGuest, guestControls, call } = useCall()
 
   return (
-    <header className="flex items-center gap-3">
-      <div className="min-w-0 flex-1">{isDirect ? <DirectCallHeading /> : <GroupLiveHeading />}</div>
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={isDirect ? "Réduire l'appel et revenir à la conversation" : "Réduire le direct et revenir à la conversation"}
-        onClick={onMinimize}
-        className="size-10"
-      >
-        <HugeiconsIcon icon={ArrowShrink02Icon} size={20} strokeWidth={1.8} />
-      </Button>
+    <header className="flex items-center gap-1">
+      <div className="mr-2 min-w-0 flex-1">{isDirect ? <DirectCallHeading /> : <GroupLiveHeading />}</div>
+      {/* Propriétaire ou administrateur : faire venir quelqu'un d'extérieur, le temps de l'appel. */}
+      {guestControls && !isDirect && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={guestControls.onInvite}
+          disabled={call.status !== "joined"}
+          className="h-10 text-voice"
+        >
+          <HugeiconsIcon icon={UserAdd01Icon} size={18} strokeWidth={1.8} data-icon="inline-start" />
+          Inviter
+        </Button>
+      )}
+      {/* Un invité n'a pas de conversation à laquelle revenir : l'appel est tout ce qu'il voit. */}
+      {!isGuest && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={isDirect ? "Réduire l'appel et revenir à la conversation" : "Réduire le direct et revenir à la conversation"}
+          onClick={onMinimize}
+          className="size-10"
+        >
+          <HugeiconsIcon icon={ArrowShrink02Icon} size={20} strokeWidth={1.8} />
+        </Button>
+      )}
     </header>
   )
 }
@@ -104,7 +120,7 @@ function DirectCallHeading() {
 
 /** Direct de groupe : le groupe, combien y sont, et depuis quand. */
 function GroupLiveHeading() {
-  const { call, title } = useCall()
+  const { call, title, isGuest } = useCall()
   const elapsed = useElapsed(getLiveSince(call.participants, false))
   const count = call.participants.length
 
@@ -117,13 +133,14 @@ function GroupLiveHeading() {
       <p className="text-xs text-muted-foreground tabular-nums">
         {count} {count > 1 ? "personnes" : "personne"}
         {elapsed && ` · ${elapsed}`}
+        {isGuest && " · vous êtes invité"}
       </p>
     </>
   )
 }
 
 function Participants() {
-  const { call, session } = useCall()
+  const { call, session, guestControls } = useCall()
   const participants = orderParticipants(call.participants, call.selfId)
   const size = getOrbSize(participants.length)
   const pop = useTempoTransition(spring.pop)
@@ -149,6 +166,11 @@ function Participants() {
               getLevel={session.levelReader(participant.peerId)}
               reactions={call.reactions.filter((item) => item.peerId === participant.peerId)}
               size={size}
+              onRemove={
+                guestControls && participant.user.isGuest
+                  ? () => guestControls.onRemove(participant.peerId)
+                  : undefined
+              }
             />
           </motion.li>
         ))}

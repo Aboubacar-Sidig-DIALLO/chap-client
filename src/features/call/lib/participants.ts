@@ -1,5 +1,11 @@
+import type { ChatUser } from "@/features/chat/types"
 import type { CallSnapshot } from "./call-session"
 import type { CallParticipant } from "../types"
+
+/** « Léa », ou « Paul (invité) » pour une personne extérieure au groupe. */
+export function participantName(user: ChatUser) {
+  return user.isGuest ? `${user.name} (invité)` : user.name
+}
 
 /**
  * Départ du chronomètre. Direct de groupe : l'arrivée du premier participant

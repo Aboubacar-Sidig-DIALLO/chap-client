@@ -426,6 +426,16 @@ export function useChat(
   }
 
   /**
+   * Retire un invité de l'appel du groupe (propriétaire et administrateurs) :
+   * il ne pourra plus revenir. Renvoie l'erreur à afficher, ou `null`.
+   */
+  function removeCallGuest(peerId: string): Promise<string | null> {
+    return new Promise((resolve) =>
+      socket.timeout(ACK_TIMEOUT_MS).emit("call:remove-guest", peerId, settle(resolve))
+    )
+  }
+
+  /**
    * Ouvre un message à vue unique reçu : la réponse donne, pour cette fois
    * seulement, de quoi télécharger ses fichiers. Il est aussitôt « ouvert ».
    */
@@ -530,5 +540,6 @@ export function useChat(
     unsendMessage,
     removeAttachment,
     openViewOnce,
+    removeCallGuest,
   }
 }

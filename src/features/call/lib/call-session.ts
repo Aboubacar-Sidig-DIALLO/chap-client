@@ -1,8 +1,9 @@
 import { createAudioMeter, type AudioMeter } from "@/components/voice-audio"
 import { closeAudioContext } from "@/lib/audio-context"
 import type { ReactionEmoji } from "@/features/chat/lib/config"
-import { listen, type ChatSocket } from "@/features/chat/lib/socket"
+import { listen } from "@/features/chat/lib/socket"
 import type { CallParticipant, CallReaction, CallSignal } from "../types"
+import type { CallSocket } from "./call-socket"
 import {
   CAMERA_CONSTRAINTS,
   MICROPHONE_CONSTRAINTS,
@@ -76,8 +77,8 @@ function describeMediaError(error: unknown, device: keyof typeof MEDIA_ERRORS) {
 
 /**
  * Le direct d'une conversation (appel audio et vidéo), indépendant de React : signalisation
- * par la connexion du chat, une liaison WebRTC par autre participant (maillage),
- * mesure du volume de chacun pour les orbes vocaux.
+ * par la connexion du chat (ou celle d'un invité), une liaison WebRTC par autre
+ * participant (maillage), mesure du volume de chacun pour les orbes vocaux.
  */
 export class CallSession {
   private snapshot = INITIAL_SNAPSHOT
@@ -91,9 +92,9 @@ export class CallSession {
   /** Change à chaque entrée ou sortie : une entrée périmée s'abandonne d'elle-même. */
   private generation = 0
   private reactionId = 0
-  private readonly socket: ChatSocket
+  private readonly socket: CallSocket
 
-  constructor(socket: ChatSocket) {
+  constructor(socket: CallSocket) {
     this.socket = socket
   }
 
